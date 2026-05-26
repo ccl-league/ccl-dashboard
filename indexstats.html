@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CCL Statistics</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:#1A1710;color:#F5F0E8;
+  min-height:100vh;overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    repeating-linear-gradient(0deg,transparent,transparent 79px,rgba(201,162,90,0.04) 80px),
+    repeating-linear-gradient(90deg,transparent,transparent 79px,rgba(201,162,90,0.02) 80px);
+}
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 70% 50% at 15% 10%,rgba(201,162,90,0.08) 0%,transparent 55%),
+    radial-gradient(ellipse 50% 40% at 85% 80%,rgba(212,149,106,0.05) 0%,transparent 50%);
+}
+
+/* ── Series sub-tabs ── */
+.series-nav{
+  position:sticky;top:0;z-index:100;
+  display:flex;gap:0;
+  background:#111009;
+  border-bottom:1px solid #3D3828;
+  padding:0 20px;
+}
+.stab{
+  padding:0 22px;height:44px;
+  border:none;border-bottom:3px solid transparent;
+  background:transparent;color:#8A8070;
+  font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;
+  letter-spacing:.6px;text-transform:uppercase;
+  cursor:pointer;transition:color .15s,border-color .15s;
+  position:relative;top:3px;white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;
+}
+.stab:hover{color:#E8C47A;}
+.stab.active{color:#E8C47A;border-bottom-color:#C9A25A;}
+
+/* ── Series panels ── */
+.spanel{display:none;}
+.spanel.active{display:block;}
+
+/* ── Stat pills ── */
+.pills-bar{
+  display:flex;gap:8px;flex-wrap:wrap;
+  padding:14px 20px;background:#1A1710;
+  border-bottom:1px solid #3D3828;
+  position:sticky;top:44px;z-index:90;
+}
+.spill{
+  display:flex;align-items:center;gap:6px;
+  padding:7px 18px;border-radius:22px;
+  border:1px solid #3D3828;background:transparent;
+  color:#8A8070;font-family:'DM Sans',sans-serif;
+  font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;
+  cursor:pointer;transition:all .15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.spill:hover{color:#E8C47A;border-color:#8A6E35;}
+.spill.active{
+  background:linear-gradient(135deg,#C9A25A,#8A6E35);
+  color:#1A1710;border-color:#C9A25A;
+  box-shadow:0 0 16px rgba(201,162,90,0.30);
+}
+
+/* ── Frames ── */
+.sframe{display:none;}
+.sframe.active{display:block;}
+
+/* ── Page wrapper ── */
+.page{
+  max-width:1200px;margin:0 auto;
+  padding:24px 20px 40px;
+  position:relative;z-index:1;
+}
+
+/* ── Section title ── */
+.section-title{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:20px;flex-wrap:wrap;gap:10px;
+}
+.section-title h2{
+  font-family:'Playfair Display',serif;font-size:22px;font-weight:900;
+  background:linear-gradient(135deg,#E8C47A,#C9A25A);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.section-ts{
+  font-size:10px;color:#504A35;letter-spacing:.8px;
+  padding:4px 12px;border-radius:10px;
+  background:rgba(201,162,90,0.08);border:1px solid #3D3828;
+}
+
+/* ═══════════════════════════════════════════
+   LEADERBOARD CARDS  (main fancy view)
+═══════════════════════════════════════════ */
+
+/* Podium — top 3 players shown as big cards */
+.podium{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:12px;
+  margin-bottom:24px;
+}
+@media(max-width:600px){.podium{grid-template-columns:1fr;}}
+
+.podium-card{
+  border-radius:16px;padding:20px 18px;
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;gap:6px;
+  transition:transform .2s,box-shadow .2s;
+}
+.podium-card:hover{transform:translateY(-3px);}
+
+/* Gold — 1st place */
+.podium-card.p1{
+  background:linear-gradient(135deg,#2A2418,#332A18);
+  border:1px solid #C9A25A;
+  box-shadow:0 8px 32px rgba(201,162,90,0.25),0 0 0 1px rgba(201,162,90,0.15);
+}
+.podium-card.p1::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,#E8C47A,transparent);
+}
+/* Silver — 2nd */
+.podium-card.p2{
+  background:linear-gradient(135deg,#252320,#2A2820);
+  border:1px solid #504A35;
+  box-shadow:0 6px 24px rgba(0,0,0,0.35);
+}
+.podium-card.p2::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,#B0A890,transparent);
+}
+/* Bronze — 3rd */
+.podium-card.p3{
+  background:linear-gradient(135deg,#221F18,#292518);
+  border:1px solid #504A35;
+  box-shadow:0 6px 24px rgba(0,0,0,0.35);
+}
+.podium-card.p3::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,#C9A25A,transparent);
+}
+
+.podium-rank{
+  font-family:'DM Mono',monospace;font-size:11px;font-weight:500;
+  letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;
+}
+.p1 .podium-rank{color:#E8C47A;}
+.p2 .podium-rank{color:#B0A890;}
+.p3 .podium-rank{color:#C9A25A;}
+
+.podium-medal{font-size:28px;margin-bottom:2px;}
+.podium-name{
+  font-family:'Playfair Display',serif;font-size:17px;font-weight:700;
+  color:#F5F0E8;line-height:1.2;
+}
+.podium-team{font-size:11px;color:#8A8070;letter-spacing:.5px;}
+.podium-stats{
+  display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;
+}
+.podium-stat{
+  display:flex;flex-direction:column;align-items:center;
+  padding:7px 12px;border-radius:10px;
+  background:rgba(0,0,0,0.25);flex:1;min-width:60px;
+}
+.pstat-val{
+  font-family:'DM Mono',monospace;font-size:16px;font-weight:500;
+  color:#E8C47A;line-height:1;
+}
+.p2 .pstat-val{color:#B0A890;}
+.p3 .pstat-val{color:#C9A25A;}
+.pstat-lbl{font-size:9px;color:#504A35;letter-spacing:.8px;text-transform:uppercase;margin-top:3px;}
+
+/* ── Rest of leaderboard list ── */
+.lb-list{
+  display:flex;flex-direction:column;gap:8px;
+}
+.lb-row{
+  display:flex;align-items:center;gap:14px;
+  padding:12px 18px;border-radius:12px;
+  background:#222018;border:1px solid #3D3828;
+  transition:background .15s,border-color .15s;
+  position:relative;overflow:hidden;
+}
+.lb-row:hover{background:#2A2820;border-color:#504A35;}
+.lb-row::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:#3D3828;border-radius:3px 0 0 3px;
+}
+.lb-num{
+  font-family:'DM Mono',monospace;font-size:13px;
+  color:#504A35;width:24px;text-align:center;flex-shrink:0;
+}
+.lb-name{
+  font-size:14px;font-weight:600;color:#F5F0E8;flex:1;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.lb-team{
+  font-size:11px;color:#8A8070;
+  padding:2px 8px;border-radius:6px;
+  background:rgba(201,162,90,0.06);border:1px solid #3D3828;
+  white-space:nowrap;flex-shrink:0;
+}
+.lb-stats{
+  display:flex;gap:16px;flex-shrink:0;
+}
+.lb-stat{
+  display:flex;flex-direction:column;align-items:flex-end;
+}
+.lbstat-val{
+  font-family:'DM Mono',monospace;font-size:14px;font-weight:500;color:#C9A25A;
+}
+.lbstat-lbl{font-size:9px;color:#504A35;letter-spacing:.6px;text-transform:uppercase;}
+
+/* ── Loading ── */
+.loading-state{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:16px;padding:80px 20px;text-align:center;
+}
+.spinner{
+  width:40px;height:40px;
+  border:4px solid #3D3828;border-top-color:#C9A25A;
+  border-radius:50%;animation:spin .75s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-text{color:#8A8070;font-size:14px;}
+.loading-sub{color:#504A35;font-size:11px;}
+
+/* ── Error ── */
+.error-state{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:16px;padding:80px 20px;text-align:center;
+}
+.err-icon{font-size:52px;}
+.err-title{
+  font-family:'Playfair Display',serif;font-size:20px;font-weight:700;
+  background:linear-gradient(135deg,#E8C47A,#C9A25A);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.err-msg{color:#8A8070;font-size:13px;max-width:400px;line-height:1.7;}
+.err-hint{
+  font-size:11px;color:#504A35;line-height:1.6;
+  background:#111009;padding:10px 18px;border-radius:8px;
+  border:1px solid #3D3828;max-width:420px;
+}
+
+/* ── F40 Coming Soon ── */
+.coming-soon{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;min-height:70vh;
+  gap:18px;padding:60px 24px;text-align:center;
+  position:relative;z-index:1;
+}
+.cs-icon{font-size:72px;filter:drop-shadow(0 0 20px rgba(201,162,90,0.3));}
+.cs-title{
+  font-family:'Playfair Display',serif;font-size:28px;font-weight:900;
+  background:linear-gradient(135deg,#E8C47A,#C9A25A);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.cs-badge{
+  display:inline-block;padding:8px 24px;border-radius:30px;
+  background:rgba(201,162,90,0.12);border:1px solid #C9A25A;
+  color:#E8C47A;font-size:11px;font-weight:700;
+  letter-spacing:2.5px;text-transform:uppercase;
+}
+.cs-msg{color:#8A8070;font-size:14px;max-width:460px;line-height:1.9;}
+.cs-divider{width:60px;height:2px;background:linear-gradient(90deg,transparent,#C9A25A,transparent);}
+.cs-meta{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#504A35;}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:#1A1710;}
+::-webkit-scrollbar-thumb{background:#504A35;border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:#8A6E35;}
+
+/* ── Mobile tweaks ── */
+@media(max-width:500px){
+  .podium{grid-template-columns:1fr;}
+  .lb-stats{display:none;}
+  .lb-team{display:none;}
+  .pills-bar{padding:10px 12px;top:44px;}
+  .page{padding:16px 12px 32px;}
+  .section-title h2{font-size:18px;}
+  .podium-name{font-size:15px;}
+  .pstat-val{font-size:14px;}
+}
+</style>
+</head>
+<body>
+
+<!-- Series tabs -->
+<nav class="series-nav">
+  <button class="stab active" id="stab-t20" onclick="showSeries('t20')">🏏 CCL T20 Championship</button>
+  <button class="stab"        id="stab-f40" onclick="showSeries('f40')">🏟️ CCL F40 Championship</button>
+</nav>
+
+<!-- T20 Panel -->
+<div class="spanel active" id="spanel-t20">
+  <!-- Stat pills -->
+  <div class="pills-bar">
+    <button class="spill active" id="spill-bat"  onclick="showStat('bat')">🏏 Best Batters</button>
+    <button class="spill"        id="spill-bowl" onclick="showStat('bowl')">⚡ Best Bowlers</button>
+    <button class="spill"        id="spill-rank" onclick="showStat('rank')">🏅 Player Rankings</button>
+  </div>
+
+  <div class="sframe active" id="sf-bat">
+    <div class="page" id="pg-bat">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading Batting Records…</div>
+        <div class="loading-sub">Fetching from Google Sheets</div>
+      </div>
+    </div>
+  </div>
+  <div class="sframe" id="sf-bowl">
+    <div class="page" id="pg-bowl">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading Bowling Records…</div>
+        <div class="loading-sub">Fetching from Google Sheets</div>
+      </div>
+    </div>
+  </div>
+  <div class="sframe" id="sf-rank">
+    <div class="page" id="pg-rank">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading Player Rankings…</div>
+        <div class="loading-sub">Fetching from Google Sheets</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- F40 Panel -->
+<div class="spanel" id="spanel-f40">
+  <div class="coming-soon">
+    <div class="cs-icon">🏟️</div>
+    <div class="cs-title">CCL F40 Championship</div>
+    <div class="cs-badge">Series Yet To Start</div>
+    <p class="cs-msg">The F40 Championship series has not commenced yet. Batting records, bowling records and player rankings will appear here once the series begins.</p>
+    <div class="cs-divider"></div>
+    <div class="cs-meta">Connecticut Cricket League · 2026 Season</div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   CCL STATISTICS — Google Sheets powered
+   3 separate public Google Sheets, Sheet1 tab each
+══════════════════════════════════════════════════════════ */
+const SHEETS = {
+  bat:  { id:'1xmsRImlbbn4L30YZgGWo7YP1L_CDrUle',            tab:'Sheet1', icon:'🏏', label:'Best Batters',    title:'CCL T20 — Batting Leaderboard' },
+  bowl: { id:'1MQ3WRymbIUT9FAjD0Vcf-lTsGQi8sHhz',            tab:'Sheet1', icon:'⚡', label:'Best Bowlers',    title:'CCL T20 — Bowling Leaderboard' },
+  rank: { id:'1zhGHaGQ85wQFvuKBsLFLrzR0QOJOoa44kUCKGVQJEdg', tab:'Sheet1', icon:'🏅', label:'Player Rankings', title:'CCL T20 — Player Rankings' },
+};
+const MEDALS  = ['🥇','🥈','🥉'];
+const POS_CLS = ['p1','p2','p3'];
+const REFRESH = 5 * 60 * 1000;
+const _timers = {}, _loaded = {};
+
+function showSeries(key) {
+  document.querySelectorAll('.stab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.spanel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('stab-'+key).classList.add('active');
+  document.getElementById('spanel-'+key).classList.add('active');
+}
+function showStat(key) {
+  document.querySelectorAll('.spill').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.sframe').forEach(f=>f.classList.remove('active'));
+  document.getElementById('spill-'+key).classList.add('active');
+  document.getElementById('sf-'+key).classList.add('active');
+  loadStat(key);
+}
+
+/* Fetch */
+async function gsFetch(key) {
+  const s = SHEETS[key];
+  const url = `https://docs.google.com/spreadsheets/d/${s.id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(s.tab)}&_cb=${Date.now()}`;
+  const r = await fetch(url, {cache:'no-store'});
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.text();
+}
+
+/* Parse CSV */
+function parseCSV(text) {
+  const rows=[];let cur='',inQ=false,row=[];
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(ch==='"'){inQ=!inQ;continue;}
+    if(ch===','&&!inQ){row.push(cur.trim());cur='';continue;}
+    if((ch==='\n'||ch==='\r')&&!inQ){
+      if(ch==='\r'&&text[i+1]==='\n')i++;
+      if(row.length>0||cur.trim()){row.push(cur.trim());rows.push(row);}
+      row=[];cur='';continue;
+    }
+    cur+=ch;
+  }
+  if(cur.trim()||row.length){row.push(cur.trim());rows.push(row);}
+  return rows.filter(r=>r.some(c=>c.trim()));
+}
+
+/* Guess which column is player name, team, and key stat */
+function guessColumns(headers) {
+  const h = headers.map(x=>x.toLowerCase().trim());
+  const nameIdx  = h.findIndex(x=>x.includes('player')||x.includes('name')||x==='batsman'||x==='bowler');
+  const teamIdx  = h.findIndex(x=>x.includes('team')||x.includes('club'));
+  // Key stat: runs for batting, wickets for bowling, points/rating for rankings
+  const statPriority = [
+    'runs','wickets','points','rating','rank','average','avg',
+    'economy','strike','sr','econ','hs','best'
+  ];
+  const statIdxs = statPriority
+    .map(s=>h.findIndex(x=>x.includes(s)))
+    .filter(i=>i>=0&&i!==nameIdx&&i!==teamIdx)
+    .filter((v,i,a)=>a.indexOf(v)===i)
+    .slice(0,3);
+  return {nameIdx, teamIdx, statIdxs};
+}
+
+/* Render fancy leaderboard */
+function renderLeaderboard(key, headers, rows) {
+  const pg  = document.getElementById('pg-'+key);
+  const s   = SHEETS[key];
+  const now = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  const {nameIdx, teamIdx, statIdxs} = guessColumns(headers);
+
+  /* Build podium (top 3) */
+  let podiumHTML = '<div class="podium">';
+  rows.slice(0,3).forEach((row,i) => {
+    const name = nameIdx>=0 ? row[nameIdx] : row[0];
+    const team = teamIdx>=0 ? row[teamIdx] : '';
+    const statsHTML = statIdxs.map(si=>`
+      <div class="podium-stat">
+        <div class="pstat-val">${row[si]||'—'}</div>
+        <div class="pstat-lbl">${headers[si]}</div>
+      </div>`).join('');
+    podiumHTML += `
+      <div class="podium-card ${POS_CLS[i]}">
+        <div class="podium-rank">${i===0?'Champion':i===1?'Runner Up':'3rd Place'}</div>
+        <div class="podium-medal">${MEDALS[i]}</div>
+        <div class="podium-name">${name}</div>
+        ${team?`<div class="podium-team">${team}</div>`:''}
+        <div class="podium-stats">${statsHTML}</div>
+      </div>`;
+  });
+  podiumHTML += '</div>';
+
+  /* Build rest of list (row 4 onwards) */
+  let listHTML = '';
+  if(rows.length>3){
+    listHTML = '<div class="lb-list">';
+    rows.slice(3).forEach((row,i)=>{
+      const name = nameIdx>=0 ? row[nameIdx] : row[0];
+      const team = teamIdx>=0 ? row[teamIdx] : '';
+      const statsHTML = statIdxs.map(si=>`
+        <div class="lb-stat">
+          <div class="lbstat-val">${row[si]||'—'}</div>
+          <div class="lbstat-lbl">${headers[si]}</div>
+        </div>`).join('');
+      listHTML += `
+        <div class="lb-row">
+          <span class="lb-num">${i+4}</span>
+          <span class="lb-name">${name}</span>
+          ${team?`<span class="lb-team">${team}</span>`:''}
+          <div class="lb-stats">${statsHTML}</div>
+        </div>`;
+    });
+    listHTML += '</div>';
+  }
+
+  pg.innerHTML = `
+    <div class="section-title">
+      <h2>${s.icon} ${s.title}</h2>
+      <span class="section-ts">⟳ ${now} · Auto-refresh 5 min</span>
+    </div>
+    ${podiumHTML}
+    ${listHTML}`;
+}
+
+/* Show error */
+function renderError(key, msg) {
+  const pg = document.getElementById('pg-'+key);
+  const s  = SHEETS[key];
+  pg.innerHTML = `
+    <div class="error-state">
+      <div class="err-icon">${s.icon}</div>
+      <div class="err-title">${s.label}</div>
+      <p class="err-msg">${msg}</p>
+      <div class="err-hint">
+        Check: <strong>Share → Anyone with the link → Viewer</strong><br>
+        Tab must be named exactly: <strong>${s.tab}</strong><br>
+        Data must have column headers in <strong>Row 1</strong>
+      </div>
+    </div>`;
+}
+
+/* Refresh */
+async function refreshStat(key) {
+  try {
+    const csv  = await gsFetch(key);
+    const rows = parseCSV(csv);
+    if(!rows||rows.length<2){ renderError(key,'Sheet is empty or tab name is wrong.'); return; }
+    renderLeaderboard(key, rows[0], rows.slice(1));
+  } catch(e) {
+    renderError(key, `Could not load: ${e.message}`);
+  }
+}
+
+/* Load + auto-refresh */
+function loadStat(key) {
+  if(_loaded[key]) return;
+  _loaded[key]=true;
+  refreshStat(key);
+  clearInterval(_timers[key]);
+  _timers[key]=setInterval(()=>refreshStat(key), REFRESH);
+}
+
+/* Boot */
+window.addEventListener('DOMContentLoaded',()=>loadStat('bat'));
+</script>
+</body>
+</html>

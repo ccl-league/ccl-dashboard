@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CCL Statistics</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'DM Sans',sans-serif;background:#1A1710;color:#F5F0E8;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:repeating-linear-gradient(0deg,transparent,transparent 79px,rgba(201,162,90,0.04) 80px),
+  repeating-linear-gradient(90deg,transparent,transparent 79px,rgba(201,162,90,0.02) 80px);}
+body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse 70% 50% at 15% 10%,rgba(201,162,90,0.08) 0%,transparent 55%),
+  radial-gradient(ellipse 50% 40% at 85% 80%,rgba(212,149,106,0.05) 0%,transparent 50%);}
+
+/* ── Level 1: T20 / F40 ── */
+.series-nav{position:sticky;top:0;z-index:100;display:flex;background:#111009;
+  border-bottom:1px solid #3D3828;padding:0 20px;}
+.stab{padding:0 22px;height:44px;border:none;border-bottom:3px solid transparent;
+  background:transparent;color:#8A8070;font-family:'DM Sans',sans-serif;font-size:11px;
+  font-weight:600;letter-spacing:.6px;text-transform:uppercase;cursor:pointer;
+  transition:color .15s,border-color .15s;position:relative;top:3px;white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;}
+.stab:hover{color:#E8C47A;}.stab.active{color:#E8C47A;border-bottom-color:#C9A25A;}
+.spanel{display:none;}.spanel.active{display:block;}
+
+/* ── Level 2: Bat / Bowl / Rank ── */
+.main-pills{display:flex;gap:8px;flex-wrap:wrap;padding:12px 20px;background:#1A1710;
+  border-bottom:1px solid #3D3828;position:sticky;top:44px;z-index:90;}
+.mpill{display:flex;align-items:center;gap:6px;padding:6px 16px;border-radius:22px;
+  border:1px solid #3D3828;background:transparent;color:#8A8070;font-family:'DM Sans',sans-serif;
+  font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;cursor:pointer;transition:all .15s;
+  -webkit-tap-highlight-color:transparent;}
+.mpill:hover{color:#E8C47A;border-color:#8A6E35;}
+.mpill.active{background:linear-gradient(135deg,#C9A25A,#8A6E35);color:#1A1710;border-color:#C9A25A;
+  box-shadow:0 0 16px rgba(201,162,90,0.30);}
+.mframe{display:none;}.mframe.active{display:block;}
+
+/* ── Level 3: Sub-category tabs (Runs / Avg / SR …) ── */
+.sub-nav{display:flex;gap:0;overflow-x:auto;background:#1A1710;
+  border-bottom:1px solid #3D3828;padding:0 20px;
+  position:sticky;top:92px;z-index:80;scrollbar-width:none;}
+.sub-nav::-webkit-scrollbar{display:none;}
+.subtab{padding:0 16px;height:38px;border:none;border-bottom:3px solid transparent;
+  background:transparent;color:#8A8070;font-family:'DM Sans',sans-serif;font-size:10px;
+  font-weight:600;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;
+  transition:color .15s,border-color .15s;position:relative;top:3px;white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;}
+.subtab:hover{color:#E8C47A;}.subtab.active{color:#E8C47A;border-bottom-color:#C9A25A;}
+.subfr{display:none;}.subfr.active{display:block;}
+
+/* ── Page ── */
+.page{max-width:1300px;margin:0 auto;padding:20px 20px 48px;position:relative;z-index:1;}
+.ts-bar{display:flex;align-items:center;justify-content:flex-end;margin-bottom:18px;}
+.ts-pill{font-size:10px;color:#504A35;letter-spacing:.8px;padding:4px 12px;border-radius:10px;
+  background:rgba(201,162,90,0.07);border:1px solid #3D3828;}
+
+/* ── Podium row ── */
+.podium-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px;}
+@media(max-width:700px){.podium-row{grid-template-columns:1fr;}}
+@media(min-width:701px) and (max-width:900px){.podium-row{grid-template-columns:1fr 1fr;}}
+
+.pod{border-radius:14px;padding:18px 16px;position:relative;overflow:hidden;
+  display:flex;flex-direction:column;gap:4px;transition:transform .18s,box-shadow .18s;}
+.pod:hover{transform:translateY(-3px);}
+.pod.r1{background:linear-gradient(145deg,#2A2418,#332A18);border:1px solid #C9A25A;
+  box-shadow:0 6px 28px rgba(201,162,90,0.22),0 0 0 1px rgba(201,162,90,0.10);}
+.pod.r1::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,#E8C47A,transparent);}
+.pod.r2{background:linear-gradient(145deg,#252320,#2A2820);border:1px solid #504A35;box-shadow:0 4px 20px rgba(0,0,0,0.35);}
+.pod.r2::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,#B0A890,transparent);}
+.pod.r3{background:linear-gradient(145deg,#221F18,#292518);border:1px solid #504A35;box-shadow:0 4px 20px rgba(0,0,0,0.30);}
+.pod.r3::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,#8A6E35,transparent);}
+.pod-pos{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px;}
+.r1 .pod-pos{color:#E8C47A;}.r2 .pod-pos{color:#B0A890;}.r3 .pod-pos{color:#8A8070;}
+.pod-medal{font-size:24px;margin-bottom:4px;}
+.pod-name{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#F5F0E8;line-height:1.2;margin-bottom:2px;}
+.pod-team{font-size:10px;color:#8A8070;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;}
+.pod-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:5px;margin-top:6px;}
+.pod-stat{display:flex;flex-direction:column;align-items:center;padding:6px 4px;border-radius:8px;
+  background:rgba(0,0,0,0.20);border:1px solid rgba(255,255,255,0.04);}
+.pod-stat.hl{background:rgba(201,162,90,0.18);border:1px solid rgba(201,162,90,0.45);
+  box-shadow:0 0 10px rgba(201,162,90,0.15);}
+.r2 .pod-stat.hl{background:rgba(176,168,144,0.18);border-color:rgba(176,168,144,0.45);}
+.r3 .pod-stat.hl{background:rgba(138,110,53,0.18);border-color:rgba(138,110,53,0.40);}
+.ps-v{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:#B0A890;line-height:1;}
+.pod-stat.hl .ps-v{font-size:16px;font-weight:700;color:#E8C47A;}
+.r2 .pod-stat.hl .ps-v{color:#C8C0A8;}.r3 .pod-stat.hl .ps-v{color:#C9A25A;}
+.ps-l{font-size:8px;color:#504A35;letter-spacing:.8px;text-transform:uppercase;margin-top:3px;text-align:center;}
+
+/* ── Top-10 table ── */
+.tbl-section-title{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;
+  background:linear-gradient(135deg,#E8C47A,#C9A25A);-webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #3D3828;}
+.tbl-card{background:#222018;border:1px solid #3D3828;border-radius:14px;overflow:hidden;
+  box-shadow:0 4px 20px rgba(0,0,0,0.35);}
+.tbl-scroll{overflow-x:auto;}
+.dtbl{width:100%;border-collapse:collapse;font-size:13px;min-width:400px;}
+.dtbl thead tr{background:#111009;}
+.dtbl th{padding:9px 14px;text-align:left;font-size:9px;font-weight:700;letter-spacing:1.2px;
+  text-transform:uppercase;color:#8A8070;border-bottom:2px solid #C9A25A;white-space:nowrap;}
+.dtbl th.hl-col{color:#E8C47A;border-bottom-color:#E8C47A;}
+.dtbl tbody tr{border-bottom:1px solid #3D3828;transition:background .12s;}
+.dtbl tbody tr:hover{background:rgba(201,162,90,0.06);}
+.dtbl tbody tr:nth-child(even){background:rgba(255,255,255,0.015);}
+.dtbl td{padding:9px 14px;color:#F5F0E8;white-space:nowrap;}
+.dtbl td.hl-col{color:#E8C47A;font-weight:600;}
+.dtbl tbody tr.rr1{border-left:3px solid #E8C47A;}
+.dtbl tbody tr.rr2{border-left:3px solid #B0A890;}
+.dtbl tbody tr.rr3{border-left:3px solid #C9A25A;}
+
+/* ── Rankings hero cards ── */
+.rank-heroes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;}
+@media(max-width:600px){.rank-heroes{grid-template-columns:1fr;}}
+.hero-card{border-radius:16px;padding:24px 22px;position:relative;overflow:hidden;
+  background:linear-gradient(145deg,#2A2418,#332A18);border:1px solid #C9A25A;
+  box-shadow:0 8px 32px rgba(201,162,90,0.20);}
+.hero-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,#E8C47A,transparent);}
+.hero-label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#8A6E35;margin-bottom:8px;}
+.hero-trophy{font-size:32px;margin-bottom:8px;}
+.hero-name{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#F5F0E8;line-height:1.1;margin-bottom:4px;}
+.hero-team{font-size:11px;color:#8A8070;letter-spacing:.5px;margin-bottom:16px;}
+.hero-bignum{font-family:'DM Mono',monospace;font-size:42px;font-weight:500;color:#E8C47A;line-height:1;}
+.hero-biglabel{font-size:9px;color:#504A35;letter-spacing:1.2px;text-transform:uppercase;margin-top:4px;}
+
+/* ── Loading / Error / F40 ── */
+.loading-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:80px 20px;text-align:center;}
+.spinner{width:40px;height:40px;border:4px solid #3D3828;border-top-color:#C9A25A;border-radius:50%;animation:spin .75s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-text{color:#8A8070;font-size:14px;}.loading-sub{color:#504A35;font-size:11px;}
+.error-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:80px 20px;text-align:center;}
+.err-icon{font-size:52px;}
+.err-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;
+  background:linear-gradient(135deg,#E8C47A,#C9A25A);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.err-msg{color:#8A8070;font-size:13px;max-width:420px;line-height:1.7;}
+.err-hint{font-size:11px;color:#504A35;line-height:1.6;background:#111009;padding:10px 18px;border-radius:8px;border:1px solid #3D3828;max-width:400px;}
+.coming-soon{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;
+  gap:18px;padding:60px 24px;text-align:center;position:relative;z-index:1;}
+.cs-icon{font-size:72px;filter:drop-shadow(0 0 20px rgba(201,162,90,0.3));}
+.cs-title{font-family:'Playfair Display',serif;font-size:28px;font-weight:900;
+  background:linear-gradient(135deg,#E8C47A,#C9A25A);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.cs-badge{display:inline-block;padding:8px 24px;border-radius:30px;background:rgba(201,162,90,0.12);
+  border:1px solid #C9A25A;color:#E8C47A;font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;}
+.cs-msg{color:#8A8070;font-size:14px;max-width:460px;line-height:1.9;}
+.cs-divider{width:60px;height:2px;background:linear-gradient(90deg,transparent,#C9A25A,transparent);}
+.cs-meta{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#504A35;}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:#1A1710;}
+::-webkit-scrollbar-thumb{background:#504A35;border-radius:3px;}::-webkit-scrollbar-thumb:hover{background:#8A6E35;}
+@media(max-width:500px){.page{padding:14px 12px 32px;}.mpill{padding:5px 12px;font-size:10px;}.subtab{padding:0 10px;font-size:9px;}}
+</style>
+</head>
+<body>
+
+<!-- Level 1: T20 / F40 -->
+<nav class="series-nav">
+  <button class="stab active" id="stab-t20" onclick="showSeries('t20')">🏏 CCL T20 Championship</button>
+  <button class="stab"        id="stab-f40" onclick="showSeries('f40')">🏟️ CCL F40 Championship</button>
+</nav>
+
+<!-- ══ T20 ═══════════════════════════════════════ -->
+<div class="spanel active" id="spanel-t20">
+
+  <!-- Level 2: Bat / Bowl / Rank -->
+  <div class="main-pills">
+    <button class="mpill active" id="mpill-bat"  onclick="showMain('bat')">🏏 Best Batters</button>
+    <button class="mpill"        id="mpill-bowl" onclick="showMain('bowl')">⚡ Best Bowlers</button>
+    <button class="mpill"        id="mpill-rank" onclick="showMain('rank')">🏅 Player Rankings</button>
+  </div>
+
+  <!-- ── Batting frame ── -->
+  <div class="mframe active" id="mf-bat">
+    <!-- Level 3 sub-tabs generated by JS -->
+    <div class="sub-nav" id="subnav-bat"></div>
+    <div id="subframes-bat"></div>
+  </div>
+
+  <!-- ── Bowling frame ── -->
+  <div class="mframe" id="mf-bowl">
+    <div class="sub-nav" id="subnav-bowl"></div>
+    <div id="subframes-bowl"></div>
+  </div>
+
+  <!-- ── Rankings frame ── -->
+  <div class="mframe" id="mf-rank">
+    <div class="sub-nav" id="subnav-rank"></div>
+    <div id="subframes-rank"></div>
+  </div>
+
+</div>
+
+<!-- ══ F40 ═══════════════════════════════════════ -->
+<div class="spanel" id="spanel-f40">
+  <div class="coming-soon">
+    <div class="cs-icon">🏟️</div>
+    <div class="cs-title">CCL F40 Championship</div>
+    <div class="cs-badge">Series Yet To Start</div>
+    <p class="cs-msg">Statistics will appear here once the F40 series begins.</p>
+    <div class="cs-divider"></div>
+    <div class="cs-meta">Connecticut Cricket League · 2026 Season</div>
+  </div>
+</div>
+
+<script>
+/* ═════════════════════════════════════════════════════════
+   CCL STATISTICS  ·  3 Google Sheets  ·  Sheet1 tab each
+═════════════════════════════════════════════════════════ */
+const SHEETS = {
+  bat:  { id:'1xmsRImlbbn4L30YZgGWo7YP1L_CDrUle',            tab:'Sheet1' },
+  bowl: { id:'1MQ3WRymbIUT9FAjD0Vcf-lTsGQi8sHhz',            tab:'Sheet1' },
+  rank: { id:'1zhGHaGQ85wQFvuKBsLFLrzR0QOJOoa44kUCKGVQJEdg', tab:'Sheet1' },
+};
+
+/* Sub-tab definitions per main section */
+const SUBS = {
+  bat: [
+    { id:'runs',  col:'Runs',  icon:'🏏', label:'Top Runs',     sort:'desc' },
+    { id:'avg',   col:'Avg',   icon:'📊', label:'Best Average', sort:'desc' },
+    { id:'sr',    col:'SR',    icon:'⚡', label:'Strike Rate',  sort:'desc' },
+    { id:'fif',   col:"50's",  icon:'🌟', label:'Most Fifties', sort:'desc' },
+    { id:'sixes', col:"6's",   icon:'💥', label:'Most Sixes',   sort:'desc' },
+    { id:'fours', col:"4's",   icon:'🎯', label:'Most Fours',   sort:'desc' },
+  ],
+  bowl: [
+    { id:'wkts',  col:'Wkts',  icon:'🎳', label:'Top Wickets',  sort:'desc' },
+    { id:'avg',   col:'Avg',   icon:'📊', label:'Best Average', sort:'asc'  },
+    { id:'econ',  col:'Econ',  icon:'💰', label:'Best Economy', sort:'asc'  },
+    { id:'sr',    col:'SR',    icon:'⚡', label:'Strike Rate',  sort:'asc'  },
+    { id:'fw',    col:'5w',    icon:'🌠', label:'5-Wkt Hauls',  sort:'desc' },
+    { id:'dots',  col:'Dots',  icon:'⚫', label:'Dot Balls',    sort:'desc' },
+  ],
+  rank: [
+    { id:'pts',   col:'Total',  icon:'🏆', label:'Overall Player Ranking', btnLabel:'Top Points',  sort:'desc' },
+    { id:'mom',   col:"MOM#",   icon:'⭐', label:'Overall Player Ranking', btnLabel:'Most MOM',    sort:'desc' },
+  ],
+};
+
+const NAME_COLS  = ['Player','Name','Batsman','Bowler','Batter'];
+const TEAM_COLS  = ['Team','Club','Side'];
+const MEDALS     = ['🥇','🥈','🥉'];
+const POS_LBL    = ['Champion','Runner Up','3rd Place'];
+const POS_CLS    = ['r1','r2','r3'];
+const TOP_N      = 10;
+const REFRESH    = 5*60*1000;
+const _timers={}, _loaded={}, _data={};
+let _activeSub   = { bat:'runs', bowl:'wkts', rank:'pts' };
+
+/* ── Navigation ── */
+function showSeries(k){
+  document.querySelectorAll('.stab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.spanel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('stab-'+k).classList.add('active');
+  document.getElementById('spanel-'+k).classList.add('active');
+}
+function showMain(k){
+  document.querySelectorAll('.mpill').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.mframe').forEach(f=>f.classList.remove('active'));
+  document.getElementById('mpill-'+k).classList.add('active');
+  document.getElementById('mf-'+k).classList.add('active');
+  loadMain(k);
+}
+function showSub(mainKey, subId){
+  _activeSub[mainKey] = subId;
+  document.querySelectorAll(`#subnav-${mainKey} .subtab`).forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll(`#subframes-${mainKey} .subfr`).forEach(f=>f.classList.remove('active'));
+  const btn = document.getElementById(`subtab-${mainKey}-${subId}`);
+  const fr  = document.getElementById(`subfr-${mainKey}-${subId}`);
+  if(btn) btn.classList.add('active');
+  if(fr)  fr.classList.add('active');
+}
+
+/* ── Fetch ── */
+async function gsFetch(k){
+  const s=SHEETS[k];
+  const url=`https://docs.google.com/spreadsheets/d/${s.id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(s.tab)}&_cb=${Date.now()}`;
+  const r=await fetch(url,{cache:'no-store'});
+  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.text();
+}
+
+/* ── CSV parser ── */
+function parseCSV(text){
+  const rows=[];let cur='',inQ=false,row=[];
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(ch==='"'){inQ=!inQ;continue;}
+    if(ch===','&&!inQ){row.push(cur.trim());cur='';continue;}
+    if((ch==='\n'||ch==='\r')&&!inQ){
+      if(ch==='\r'&&text[i+1]==='\n')i++;
+      if(row.length||cur.trim()){row.push(cur.trim());rows.push(row);}
+      row=[];cur='';continue;
+    }
+    cur+=ch;
+  }
+  if(cur.trim()||row.length){row.push(cur.trim());rows.push(row);}
+  return rows.filter(r=>r.some(c=>c.trim()));
+}
+
+/* ── Helpers ── */
+function colIdx(headers, names){
+  const h=headers.map(x=>x.trim().toLowerCase());
+  const arr=Array.isArray(names)?names:[names];
+  for(const n of arr){ const i=h.findIndex(x=>x===n.toLowerCase()); if(i>=0)return i; }
+  for(const n of arr){ const i=h.findIndex(x=>x.includes(n.toLowerCase())); if(i>=0)return i; }
+  return -1;
+}
+function num(v){ const n=parseFloat(String(v||'').replace(/[^0-9.\-]/g,'')); return isNaN(n)?-Infinity:n; }
+
+/* Sort rows by column */
+function sortedRows(rows, headers, col, asc){
+  const ci=colIdx(headers,[col]);
+  if(ci<0) return null;
+  return [...rows].filter(r=>num(r[ci])>-Infinity)
+    .sort((a,b)=>asc?num(a[ci])-num(b[ci]):num(b[ci])-num(a[ci]));
+}
+
+/* ── Podium HTML (top 3 with all stats, one highlighted) ── */
+function podiumHTML(top3, headers, hlCol){
+  const hIdx = colIdx(headers,[hlCol]);
+  const ni   = colIdx(headers,NAME_COLS);
+  const ti   = colIdx(headers,TEAM_COLS);
+  const skip = new Set([ni,ti].filter(i=>i>=0));
+  return `<div class="podium-row">${top3.map((row,i)=>{
+    const name=ni>=0?row[ni]:row[0];
+    const team=ti>=0?row[ti]:'';
+    const stats=headers.map((h,ci)=>{
+      if(skip.has(ci)) return '';
+      const isHL=ci===hIdx;
+      return `<div class="pod-stat${isHL?' hl':''}"><div class="ps-v">${row[ci]||'—'}</div><div class="ps-l">${h}</div></div>`;
+    }).join('');
+    return `<div class="pod ${POS_CLS[i]}">
+      <div class="pod-pos">${POS_LBL[i]}</div>
+      <div class="pod-medal">${MEDALS[i]}</div>
+      <div class="pod-name">${name||'—'}</div>
+      <div class="pod-team">${team||'&nbsp;'}</div>
+      <div class="pod-stats">${stats}</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+/* ── Top-10 table HTML ── */
+function tableHTML(rows, headers, hlCol){
+  const hIdx = colIdx(headers,[hlCol]);
+  const th   = headers.map((h,i)=>`<th class="${i===hIdx?'hl-col':''}">${h}</th>`).join('');
+  const tb   = rows.slice(0,TOP_N).map((row,i)=>{
+    const cls=i===0?'rr1':i===1?'rr2':i===2?'rr3':'';
+    const tds=row.map((c,ci)=>`<td class="${ci===hIdx?'hl-col':''}">${c||'—'}</td>`).join('');
+    return `<tr class="${cls}">${tds}</tr>`;
+  }).join('');
+  return `<div class="tbl-card"><div class="tbl-scroll"><table class="dtbl">
+    <thead><tr>${th}</tr></thead><tbody>${tb}</tbody>
+  </table></div></div>`;
+}
+
+/* ── Build sub-tabs for bat/bowl ── */
+function buildSubTabs(mainKey, headers, rows){
+  const subs  = SUBS[mainKey];
+  const navEl = document.getElementById(`subnav-${mainKey}`);
+  const frEl  = document.getElementById(`subframes-${mainKey}`);
+  const now   = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+
+  navEl.innerHTML = subs.map(s=>
+    `<button class="subtab" id="subtab-${mainKey}-${s.id}" onclick="showSub('${mainKey}','${s.id}')">${s.icon} ${s.label}</button>`
+  ).join('');
+
+  frEl.innerHTML = subs.map(s=>{
+    const sorted = sortedRows(rows, headers, s.col, s.sort==='asc');
+    if(!sorted) return `<div class="subfr" id="subfr-${mainKey}-${s.id}"><div class="page"><p style="color:#504A35;padding:20px">Column "${s.col}" not found in sheet.</p></div></div>`;
+    const top3   = sorted.slice(0,3);
+    const pod    = podiumHTML(top3, headers, s.col);
+    const tbl    = tableHTML(sorted, headers, s.col);
+    return `<div class="subfr" id="subfr-${mainKey}-${s.id}">
+      <div class="page">
+        <div class="ts-bar"><span class="ts-pill">⟳ ${now} · Top ${Math.min(TOP_N,sorted.length)} players · Auto-refresh 5 min</span></div>
+        ${pod}
+        <div class="tbl-section-title">📋 Top ${Math.min(TOP_N,sorted.length)} — ${s.label}</div>
+        ${tbl}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Activate default or previously active sub
+  const active = _activeSub[mainKey];
+  const def    = subs.find(s=>s.id===active) ? active : subs[0].id;
+  showSub(mainKey, def);
+}
+
+/* ── Build rankings sub-tabs ── */
+function buildRankSubTabs(headers, rows){
+  const subs  = SUBS.rank;
+  const navEl = document.getElementById('subnav-rank');
+  const frEl  = document.getElementById('subframes-rank');
+  const now   = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  const ni    = colIdx(headers,NAME_COLS);
+  const ti    = colIdx(headers,TEAM_COLS);
+
+  navEl.innerHTML = subs.map(s=>
+    `<button class="subtab" id="subtab-rank-${s.id}" onclick="showSub('rank','${s.id}')">${s.icon} ${s.btnLabel||s.label}</button>`
+  ).join('');
+
+  frEl.innerHTML = subs.map(s=>{
+    const ci     = colIdx(headers,[s.col]);
+    if(ci<0) return `<div class="subfr" id="subfr-rank-${s.id}"><div class="page"><p style="color:#504A35;padding:20px">Column "${s.col}" not found in sheet.</p></div></div>`;
+    const sorted = [...rows].filter(r=>num(r[ci])>-Infinity).sort((a,b)=>num(b[ci])-num(a[ci]));
+    const hero   = sorted[0];
+    const isPoints = s.id==='pts';
+
+    // Hero card
+    const heroHTML = hero ? `<div class="rank-heroes"><div class="hero-card">
+      <div class="hero-label">${s.icon} ${isPoints?'Top Points Scorer':'Most Player of the Match'}</div>
+      <div class="hero-trophy">${isPoints?'🌟':'🏅'}</div>
+      <div class="hero-name">${ni>=0?hero[ni]:hero[0]}</div>
+      <div class="hero-team">${ti>=0&&hero[ti]?hero[ti]:'&nbsp;'}</div>
+      <div class="hero-bignum">${hero[ci]||'—'}</div>
+      <div class="hero-biglabel">${isPoints?'Total Points':'Man of the Match Awards'}</div>
+    </div></div>` : '';
+
+    // Top-10 table (all columns)
+    const tbl = tableHTML(sorted, headers, s.col);
+
+    return `<div class="subfr" id="subfr-rank-${s.id}">
+      <div class="page">
+        <div class="ts-bar"><span class="ts-pill">⟳ ${now} · Auto-refresh 5 min</span></div>
+        ${heroHTML}
+        <div class="tbl-section-title">📋 ${s.label} — Top ${Math.min(TOP_N,sorted.length)}</div>
+        ${tbl}
+      </div>
+    </div>`;
+  }).join('');
+
+  showSub('rank', _activeSub.rank || 'pts');
+}
+
+/* ── Error display ── */
+function renderError(k,msg){
+  const ico={bat:'🏏',bowl:'⚡',rank:'🏅'};
+  const lbl={bat:'Batting Records',bowl:'Bowling Records',rank:'Player Rankings'};
+  const nav=document.getElementById(`subnav-${k}`);
+  const fr =document.getElementById(`subframes-${k}`);
+  if(nav) nav.innerHTML='';
+  if(fr)  fr.innerHTML=`<div class="page"><div class="error-state">
+    <div class="err-icon">${ico[k]}</div><div class="err-title">${lbl[k]}</div>
+    <p class="err-msg">${msg}</p>
+    <div class="err-hint">Share → Anyone with the link → Viewer<br>Tab must be named: <strong>Sheet1</strong></div>
+  </div></div>`;
+}
+
+/* ── Load main section ── */
+async function loadMain(k){
+  if(_loaded[k]) return;
+  // Show loading inside the frames area
+  const fr=document.getElementById(`subframes-${k}`);
+  if(fr) fr.innerHTML=`<div class="page"><div class="loading-state">
+    <div class="spinner"></div>
+    <div class="loading-text">Loading ${k==='bat'?'Batting':k==='bowl'?'Bowling':'Rankings'} data…</div>
+    <div class="loading-sub">Fetching from Google Sheets</div>
+  </div></div>`;
+
+  try{
+    const csv  = await gsFetch(k);
+    const rows = parseCSV(csv);
+    if(!rows||rows.length<2){renderError(k,'Sheet appears empty.');return;}
+    _data[k]   = { headers:rows[0], rows:rows.slice(1) };
+    _loaded[k] = true;
+    rebuildSubs(k);
+    // Start auto-refresh
+    clearInterval(_timers[k]);
+    _timers[k]=setInterval(()=>refreshMain(k), REFRESH);
+  }catch(e){ renderError(k,`Could not load: ${e.message}`); }
+}
+
+function rebuildSubs(k){
+  const {headers,rows}=_data[k];
+  if(k==='rank') buildRankSubTabs(headers,rows);
+  else           buildSubTabs(k,headers,rows);
+}
+
+async function refreshMain(k){
+  try{
+    const csv  = await gsFetch(k);
+    const rows = parseCSV(csv);
+    if(!rows||rows.length<2) return;
+    _data[k]={ headers:rows[0], rows:rows.slice(1) };
+    rebuildSubs(k);
+  }catch(e){ /* silently ignore refresh errors */ }
+}
+
+/* Boot */
+window.addEventListener('DOMContentLoaded',()=>loadMain('bat'));
+</script>
+</body>
+</html>

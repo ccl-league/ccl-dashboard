@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CCL Statistics</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'DM Sans',sans-serif;background:#1A1710;color:#F5F0E8;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:repeating-linear-gradient(0deg,transparent,transparent 79px,rgba(201,162,90,0.04) 80px),
+  repeating-linear-gradient(90deg,transparent,transparent 79px,rgba(201,162,90,0.02) 80px);}
+body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse 70% 50% at 15% 10%,rgba(201,162,90,0.08) 0%,transparent 55%),
+  radial-gradient(ellipse 50% 40% at 85% 80%,rgba(212,149,106,0.05) 0%,transparent 50%);}
+
+.series-nav{position:sticky;top:0;z-index:100;display:flex;background:#111009;border-bottom:1px solid #3D3828;padding:0 20px;}
+.stab{padding:0 22px;height:44px;border:none;border-bottom:3px solid transparent;background:transparent;color:#8A8070;
+  font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;
+  cursor:pointer;transition:color .15s,border-color .15s;position:relative;top:3px;white-space:nowrap;-webkit-tap-highlight-color:transparent;}
+.stab:hover{color:#E8C47A;}.stab.active{color:#E8C47A;border-bottom-color:#C9A25A;}
+.spanel{display:none;}.spanel.active{display:block;}
+
+.pills-bar{display:flex;gap:8px;flex-wrap:wrap;padding:12px 20px;background:#1A1710;
+  border-bottom:1px solid #3D3828;position:sticky;top:44px;z-index:90;}
+.spill{display:flex;align-items:center;gap:6px;padding:6px 16px;border-radius:22px;
+  border:1px solid #3D3828;background:transparent;color:#8A8070;font-family:'DM Sans',sans-serif;
+  font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;cursor:pointer;transition:all .15s;}
+.spill:hover{color:#E8C47A;border-color:#8A6E35;}
+.spill.active{background:linear-gradient(135deg,#C9A25A,#8A6E35);color:#1A1710;border-color:#C9A25A;box-shadow:0 0 16px rgba(201,162,90,0.30);}
+
+.sframe{display:none;}.sframe.active{display:block;}
+.page{max-width:1300px;margin:0 auto;padding:24px 20px 48px;position:relative;z-index:1;}
+.ts-bar{display:flex;align-items:center;justify-content:flex-end;margin-bottom:20px;}
+.ts-pill{font-size:10px;color:#504A35;letter-spacing:.8px;padding:4px 12px;border-radius:10px;
+  background:rgba(201,162,90,0.07);border:1px solid #3D3828;}
+
+/* Category section */
+.cat-section{margin-bottom:36px;}
+.cat-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #3D3828;}
+.cat-icon{font-size:22px;}.cat-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;
+  background:linear-gradient(135deg,#E8C47A,#C9A25A);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.cat-subtitle{font-size:11px;color:#504A35;margin-left:auto;letter-spacing:.5px;}
+
+/* Podium row */
+.podium-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+@media(max-width:700px){.podium-row{grid-template-columns:1fr;}}
+@media(min-width:701px) and (max-width:900px){.podium-row{grid-template-columns:1fr 1fr;}}
+
+.pod{border-radius:14px;padding:18px 16px;position:relative;overflow:hidden;
+  display:flex;flex-direction:column;gap:4px;transition:transform .18s,box-shadow .18s;}
+.pod:hover{transform:translateY(-3px);}
+.pod.r1{background:linear-gradient(145deg,#2A2418,#332A18);border:1px solid #C9A25A;
+  box-shadow:0 6px 28px rgba(201,162,90,0.22),0 0 0 1px rgba(201,162,90,0.10);}
+.pod.r1::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,#E8C47A,transparent);}
+.pod.r2{background:linear-gradient(145deg,#252320,#2A2820);border:1px solid #504A35;box-shadow:0 4px 20px rgba(0,0,0,0.35);}
+.pod.r2::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,#B0A890,transparent);}
+.pod.r3{background:linear-gradient(145deg,#221F18,#292518);border:1px solid #504A35;box-shadow:0 4px 20px rgba(0,0,0,0.30);}
+.pod.r3::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,#8A6E35,transparent);}
+.pod-pos{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px;}
+.r1 .pod-pos{color:#E8C47A;}.r2 .pod-pos{color:#B0A890;}.r3 .pod-pos{color:#8A8070;}
+.pod-medal{font-size:24px;margin-bottom:4px;}
+.pod-name{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#F5F0E8;line-height:1.2;margin-bottom:2px;}
+.pod-team{font-size:10px;color:#8A8070;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;}
+
+/* All stats grid inside pod */
+.pod-stats{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));
+  gap:6px;margin-top:10px;
+}
+.pod-stat{
+  display:flex;flex-direction:column;align-items:center;
+  padding:6px 4px;border-radius:8px;
+  background:rgba(0,0,0,0.20);border:1px solid rgba(255,255,255,0.04);
+  transition:background .15s;
+}
+.pod-stat.highlight{
+  background:rgba(201,162,90,0.18);
+  border:1px solid rgba(201,162,90,0.45);
+  box-shadow:0 0 10px rgba(201,162,90,0.15);
+}
+.r2 .pod-stat.highlight{background:rgba(176,168,144,0.18);border-color:rgba(176,168,144,0.45);}
+.r3 .pod-stat.highlight{background:rgba(138,110,53,0.18);border-color:rgba(138,110,53,0.40);}
+.ps-val{
+  font-family:'DM Mono',monospace;font-size:14px;font-weight:500;
+  color:#B0A890;line-height:1;
+}
+.pod-stat.highlight .ps-val{font-size:16px;font-weight:700;color:#E8C47A;}
+.r2 .pod-stat.highlight .ps-val{color:#C8C0A8;}
+.r3 .pod-stat.highlight .ps-val{color:#C9A25A;}
+.ps-lbl{
+  font-size:8px;color:#504A35;letter-spacing:.8px;
+  text-transform:uppercase;margin-top:3px;text-align:center;
+}
+
+/* Rankings heroes */
+.rank-heroes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;}
+@media(max-width:600px){.rank-heroes{grid-template-columns:1fr;}}
+.hero-card{border-radius:16px;padding:24px 22px;position:relative;overflow:hidden;
+  background:linear-gradient(145deg,#2A2418,#332A18);border:1px solid #C9A25A;
+  box-shadow:0 8px 32px rgba(201,162,90,0.20);}
+.hero-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,#E8C47A,transparent);}
+.hero-label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#8A6E35;margin-bottom:8px;}
+.hero-trophy{font-size:32px;margin-bottom:8px;}
+.hero-name{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#F5F0E8;line-height:1.1;margin-bottom:4px;}
+.hero-team{font-size:11px;color:#8A8070;letter-spacing:.5px;margin-bottom:16px;}
+.hero-bignum{font-family:'DM Mono',monospace;font-size:42px;font-weight:500;color:#E8C47A;line-height:1;}
+.hero-biglabel{font-size:9px;color:#504A35;letter-spacing:1.2px;text-transform:uppercase;margin-top:4px;}
+
+/* Full rankings table */
+.rank-table-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;
+  background:linear-gradient(135deg,#E8C47A,#C9A25A);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #3D3828;}
+.rank-card{background:#222018;border:1px solid #3D3828;border-radius:14px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.35);}
+.rank-tbl-wrap{overflow-x:auto;}
+.rank-tbl{width:100%;border-collapse:collapse;font-size:13px;min-width:500px;}
+.rank-tbl thead tr{background:#111009;}
+.rank-tbl th{padding:10px 16px;text-align:left;font-size:9px;font-weight:700;letter-spacing:1.2px;
+  text-transform:uppercase;color:#8A8070;border-bottom:2px solid #C9A25A;white-space:nowrap;}
+.rank-tbl tbody tr{border-bottom:1px solid #3D3828;transition:background .12s;}
+.rank-tbl tbody tr:hover{background:rgba(201,162,90,0.06);}
+.rank-tbl tbody tr:nth-child(even){background:rgba(255,255,255,0.015);}
+.rank-tbl td{padding:10px 16px;color:#F5F0E8;white-space:nowrap;}
+.rank-tbl tbody tr.rr1 td:first-child{color:#E8C47A;font-weight:700;}
+.rank-tbl tbody tr.rr2 td:first-child{color:#B0A890;font-weight:600;}
+.rank-tbl tbody tr.rr3 td:first-child{color:#C9A25A;font-weight:600;}
+.rank-tbl tbody tr.rr1{border-left:3px solid #E8C47A;}
+.rank-tbl tbody tr.rr2{border-left:3px solid #B0A890;}
+.rank-tbl tbody tr.rr3{border-left:3px solid #C9A25A;}
+
+/* Loading */
+.loading-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:80px 20px;text-align:center;}
+.spinner{width:40px;height:40px;border:4px solid #3D3828;border-top-color:#C9A25A;border-radius:50%;animation:spin .75s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-text{color:#8A8070;font-size:14px;}.loading-sub{color:#504A35;font-size:11px;}
+
+/* Error */
+.error-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:80px 20px;text-align:center;}
+.err-icon{font-size:52px;}
+.err-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;
+  background:linear-gradient(135deg,#E8C47A,#C9A25A);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.err-msg{color:#8A8070;font-size:13px;max-width:420px;line-height:1.7;}
+.err-hint{font-size:11px;color:#504A35;line-height:1.6;background:#111009;padding:10px 18px;border-radius:8px;border:1px solid #3D3828;max-width:400px;}
+
+/* F40 */
+.coming-soon{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;
+  gap:18px;padding:60px 24px;text-align:center;position:relative;z-index:1;}
+.cs-icon{font-size:72px;filter:drop-shadow(0 0 20px rgba(201,162,90,0.3));}
+.cs-title{font-family:'Playfair Display',serif;font-size:28px;font-weight:900;
+  background:linear-gradient(135deg,#E8C47A,#C9A25A);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.cs-badge{display:inline-block;padding:8px 24px;border-radius:30px;background:rgba(201,162,90,0.12);
+  border:1px solid #C9A25A;color:#E8C47A;font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;}
+.cs-msg{color:#8A8070;font-size:14px;max-width:460px;line-height:1.9;}
+.cs-divider{width:60px;height:2px;background:linear-gradient(90deg,transparent,#C9A25A,transparent);}
+.cs-meta{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#504A35;}
+
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:#1A1710;}
+::-webkit-scrollbar-thumb{background:#504A35;border-radius:3px;}::-webkit-scrollbar-thumb:hover{background:#8A6E35;}
+@media(max-width:500px){.page{padding:16px 12px 32px;}.pod-val{font-size:22px;}.hero-bignum{font-size:34px;}.spill{padding:5px 12px;font-size:10px;}}
+</style>
+</head>
+<body>
+
+<nav class="series-nav">
+  <button class="stab active" id="stab-t20" onclick="showSeries('t20')">🏏 CCL T20 Championship</button>
+  <button class="stab"        id="stab-f40" onclick="showSeries('f40')">🏟️ CCL F40 Championship</button>
+</nav>
+
+<div class="spanel active" id="spanel-t20">
+  <div class="pills-bar">
+    <button class="spill active" id="spill-bat"  onclick="showStat('bat')">🏏 Best Batters</button>
+    <button class="spill"        id="spill-bowl" onclick="showStat('bowl')">⚡ Best Bowlers</button>
+    <button class="spill"        id="spill-rank" onclick="showStat('rank')">🏅 Player Rankings</button>
+  </div>
+  <div class="sframe active" id="sf-bat"><div class="page" id="pg-bat">
+    <div class="loading-state"><div class="spinner"></div><div class="loading-text">Loading Batting Records…</div><div class="loading-sub">Fetching from Google Sheets</div></div>
+  </div></div>
+  <div class="sframe" id="sf-bowl"><div class="page" id="pg-bowl">
+    <div class="loading-state"><div class="spinner"></div><div class="loading-text">Loading Bowling Records…</div><div class="loading-sub">Fetching from Google Sheets</div></div>
+  </div></div>
+  <div class="sframe" id="sf-rank"><div class="page" id="pg-rank">
+    <div class="loading-state"><div class="spinner"></div><div class="loading-text">Loading Player Rankings…</div><div class="loading-sub">Fetching from Google Sheets</div></div>
+  </div></div>
+</div>
+
+<div class="spanel" id="spanel-f40">
+  <div class="coming-soon">
+    <div class="cs-icon">🏟️</div><div class="cs-title">CCL F40 Championship</div>
+    <div class="cs-badge">Series Yet To Start</div>
+    <p class="cs-msg">The F40 Championship series has not commenced yet. Statistics will appear here once the series begins.</p>
+    <div class="cs-divider"></div><div class="cs-meta">Connecticut Cricket League · 2026 Season</div>
+  </div>
+</div>
+
+<script>
+const SHEETS = {
+  bat:  { id:'1xmsRImlbbn4L30YZgGWo7YP1L_CDrUle',            tab:'Sheet1' },
+  bowl: { id:'1MQ3WRymbIUT9FAjD0Vcf-lTsGQi8sHhz',            tab:'Sheet1' },
+  rank: { id:'1zhGHaGQ85wQFvuKBsLFLrzR0QOJOoa44kUCKGVQJEdg', tab:'Sheet1' },
+};
+
+const BAT_CATS = [
+  { col:'Runs',  icon:'🏏', title:'Top Run Getters',       sub:'Most runs scored',          sort:'desc' },
+  { col:'Avg',   icon:'📊', title:'Best Batting Average',  sub:'Highest average',            sort:'desc' },
+  { col:'SR',    icon:'⚡', title:'Best Strike Rate',      sub:'Highest strike rate',        sort:'desc' },
+  { col:"50's",  icon:'🌟', title:'Most Fifties',          sub:'Half-centuries scored',      sort:'desc' },
+  { col:"6's",   icon:'💥', title:'Most Sixes',            sub:'Sixes hit',                  sort:'desc' },
+  { col:"4's",   icon:'🎯', title:'Most Fours',            sub:'Fours hit',                  sort:'desc' },
+];
+const BOWL_CATS = [
+  { col:'Wkts',  icon:'🎳', title:'Top Wicket Takers',        sub:'Most wickets taken',         sort:'desc' },
+  { col:'Avg',   icon:'📊', title:'Best Bowling Average',     sub:'Lowest average',             sort:'asc'  },
+  { col:'Econ',  icon:'💰', title:'Best Economy Rate',        sub:'Lowest economy',             sort:'asc'  },
+  { col:'SR',    icon:'⚡', title:'Best Bowling Strike Rate', sub:'Lowest SR',                  sort:'asc'  },
+  { col:'5w',    icon:'🌠', title:'Most 5-Wicket Hauls',     sub:'5-wkt match hauls',           sort:'desc' },
+  { col:'Dots',  icon:'⚫', title:'Most Dot Balls',          sub:'Dot balls delivered',         sort:'desc' },
+];
+
+const NAME_COLS  = ['Player','Name','Batsman','Bowler','Batter'];
+const TEAM_COLS  = ['Team','Club','Side'];
+const MEDALS     = ['🥇','🥈','🥉'];
+const POS_LBL    = ['Champion','Runner Up','3rd Place'];
+const POS_CLS    = ['r1','r2','r3'];
+const REFRESH    = 5*60*1000;
+const _timers={}, _loaded={};
+
+function showSeries(k){
+  document.querySelectorAll('.stab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.spanel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('stab-'+k).classList.add('active');
+  document.getElementById('spanel-'+k).classList.add('active');
+}
+function showStat(k){
+  document.querySelectorAll('.spill').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.sframe').forEach(f=>f.classList.remove('active'));
+  document.getElementById('spill-'+k).classList.add('active');
+  document.getElementById('sf-'+k).classList.add('active');
+  loadStat(k);
+}
+
+async function gsFetch(k){
+  const s=SHEETS[k];
+  const url=`https://docs.google.com/spreadsheets/d/${s.id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(s.tab)}&_cb=${Date.now()}`;
+  const r=await fetch(url,{cache:'no-store'});
+  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.text();
+}
+
+function parseCSV(text){
+  const rows=[];let cur='',inQ=false,row=[];
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(ch==='"'){inQ=!inQ;continue;}
+    if(ch===','&&!inQ){row.push(cur.trim());cur='';continue;}
+    if((ch==='\n'||ch==='\r')&&!inQ){
+      if(ch==='\r'&&text[i+1]==='\n')i++;
+      if(row.length||cur.trim()){row.push(cur.trim());rows.push(row);}
+      row=[];cur='';continue;
+    }
+    cur+=ch;
+  }
+  if(cur.trim()||row.length){row.push(cur.trim());rows.push(row);}
+  return rows.filter(r=>r.some(c=>c.trim()));
+}
+
+function colIdx(headers, names){
+  const h=headers.map(x=>x.trim().toLowerCase());
+  const arr=Array.isArray(names)?names:[names];
+  for(const n of arr){
+    const i=h.findIndex(x=>x===n.toLowerCase());
+    if(i>=0) return i;
+  }
+  // fallback: partial match
+  for(const n of arr){
+    const i=h.findIndex(x=>x.includes(n.toLowerCase()));
+    if(i>=0) return i;
+  }
+  return -1;
+}
+
+function num(v){
+  const n=parseFloat(String(v||'').replace(/[^0-9.\-]/g,''));
+  return isNaN(n)?-Infinity:n;
+}
+
+function top3(rows, headers, col, asc){
+  const ci=colIdx(headers,[col]);
+  const ni=colIdx(headers,NAME_COLS);
+  const ti=colIdx(headers,TEAM_COLS);
+  if(ci<0) return null;
+  const sorted=[...rows].filter(r=>num(r[ci])>-Infinity)
+    .sort((a,b)=>asc?num(a[ci])-num(b[ci]):num(b[ci])-num(a[ci]));
+  return sorted.slice(0,3).map(r=>({
+    name: ni>=0?r[ni]:r[0],
+    team: ti>=0?r[ti]:'',
+    val:  r[ci],
+    row:  r,          // full row for all-stats display
+    nameIdx: ni,
+    teamIdx: ti,
+  }));
+}
+
+function allStatsGrid(player, headers, highlightCol){
+  const hIdx = colIdx(headers, [highlightCol]);
+  const skip = new Set([player.nameIdx, player.teamIdx].filter(i=>i>=0));
+  return `<div class="pod-stats">${headers.map((h,i)=>{
+    if(skip.has(i)) return '';
+    const isHL = i===hIdx;
+    const val  = player.row[i]||'—';
+    return `<div class="pod-stat${isHL?' highlight':''}">
+      <div class="ps-val">${val}</div>
+      <div class="ps-lbl">${h}</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function podRow(players, colLabel, headers){
+  if(!players||!players.length) return '<p style="color:#504A35;font-size:12px;padding:8px">Column not found in sheet.</p>';
+  return `<div class="podium-row">${players.map((p,i)=>`
+    <div class="pod ${POS_CLS[i]}">
+      <div class="pod-pos">${POS_LBL[i]}</div>
+      <div class="pod-medal">${MEDALS[i]}</div>
+      <div class="pod-name">${p.name||'—'}</div>
+      <div class="pod-team">${p.team||'&nbsp;'}</div>
+      ${allStatsGrid(p, headers, colLabel)}
+    </div>`).join('')}</div>`;
+}
+
+function catSec(cat, rows, headers){
+  const p=top3(rows,headers,cat.col,cat.sort==='asc');
+  if(!p) return '';
+  return `<div class="cat-section">
+    <div class="cat-header">
+      <span class="cat-icon">${cat.icon}</span>
+      <span class="cat-title">${cat.title}</span>
+      <span class="cat-subtitle">${cat.sub}</span>
+    </div>
+    ${podRow(p,cat.col,headers)}
+  </div>`;
+}
+
+function renderBat(headers,rows){
+  const now=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('pg-bat').innerHTML=
+    `<div class="ts-bar"><span class="ts-pill">⟳ Updated ${now} · Auto-refresh 5 min</span></div>`+
+    BAT_CATS.map(c=>catSec(c,rows,headers)).join('');
+}
+function renderBowl(headers,rows){
+  const now=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('pg-bowl').innerHTML=
+    `<div class="ts-bar"><span class="ts-pill">⟳ Updated ${now} · Auto-refresh 5 min</span></div>`+
+    BOWL_CATS.map(c=>catSec(c,rows,headers)).join('');
+}
+function renderRank(headers,rows){
+  const now=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  const ni=colIdx(headers,NAME_COLS);
+  const ti=colIdx(headers,TEAM_COLS);
+  const toti=colIdx(headers,['Total','Points','Pts']);
+  const momi=colIdx(headers,["MOM#","MOM","Mom"]);
+
+  const byPts=toti>=0?[...rows].filter(r=>num(r[toti])>-Infinity).sort((a,b)=>num(b[toti])-num(a[toti])):[];
+  const byMom=momi>=0?[...rows].filter(r=>num(r[momi])>-Infinity).sort((a,b)=>num(b[momi])-num(a[momi])):[];
+  const h1=byPts[0], h2=byMom[0];
+
+  const heroHTML=`<div class="rank-heroes">
+    ${h1?`<div class="hero-card">
+      <div class="hero-label">🏆 Top Points Scorer</div><div class="hero-trophy">🌟</div>
+      <div class="hero-name">${ni>=0?h1[ni]:h1[0]}</div>
+      <div class="hero-team">${ti>=0&&h1[ti]?h1[ti]:'&nbsp;'}</div>
+      <div class="hero-bignum">${h1[toti]||'—'}</div>
+      <div class="hero-biglabel">Total Points</div>
+    </div>`:''}
+    ${h2?`<div class="hero-card">
+      <div class="hero-label">⭐ Most Player of the Match</div><div class="hero-trophy">🏅</div>
+      <div class="hero-name">${ni>=0?h2[ni]:h2[0]}</div>
+      <div class="hero-team">${ti>=0&&h2[ti]?h2[ti]:'&nbsp;'}</div>
+      <div class="hero-bignum">${h2[momi]||'—'}</div>
+      <div class="hero-biglabel">Man of the Match Awards</div>
+    </div>`:''}
+  </div>`;
+
+  const th=headers.map(h=>`<th>${h}</th>`).join('');
+  const tb=rows.map((r,i)=>{
+    const cls=i===0?'rr1':i===1?'rr2':i===2?'rr3':'';
+    return `<tr class="${cls}">${r.map(c=>`<td>${c||'—'}</td>`).join('')}</tr>`;
+  }).join('');
+
+  document.getElementById('pg-rank').innerHTML=
+    `<div class="ts-bar"><span class="ts-pill">⟳ Updated ${now} · Auto-refresh 5 min</span></div>
+    ${heroHTML}
+    <div class="rank-table-title">🏅 Full Player Rankings</div>
+    <div class="rank-card"><div class="rank-tbl-wrap">
+      <table class="rank-tbl">
+        <thead><tr>${th}</tr></thead>
+        <tbody>${tb}</tbody>
+      </table>
+    </div></div>`;
+}
+
+function renderError(k,msg){
+  const ico={bat:'🏏',bowl:'⚡',rank:'🏅'};
+  const lbl={bat:'Batting Records',bowl:'Bowling Records',rank:'Player Rankings'};
+  document.getElementById('pg-'+k).innerHTML=`
+    <div class="error-state">
+      <div class="err-icon">${ico[k]}</div><div class="err-title">${lbl[k]}</div>
+      <p class="err-msg">${msg}</p>
+      <div class="err-hint">Share → Anyone with the link → Viewer<br>Tab must be named: <strong>Sheet1</strong></div>
+    </div>`;
+}
+
+async function refreshStat(k){
+  try{
+    const csv=await gsFetch(k);
+    const rows=parseCSV(csv);
+    if(!rows||rows.length<2){renderError(k,'Sheet appears empty.');return;}
+    const h=rows[0],d=rows.slice(1);
+    if(k==='bat')  renderBat(h,d);
+    if(k==='bowl') renderBowl(h,d);
+    if(k==='rank') renderRank(h,d);
+  }catch(e){renderError(k,`Could not load: ${e.message}`);}
+}
+
+function loadStat(k){
+  if(_loaded[k]) return;
+  _loaded[k]=true;
+  refreshStat(k);
+  clearInterval(_timers[k]);
+  _timers[k]=setInterval(()=>refreshStat(k),REFRESH);
+}
+
+window.addEventListener('DOMContentLoaded',()=>loadStat('bat'));
+</script>
+</body>
+</html>

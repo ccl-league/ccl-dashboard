@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CCL · Team Fair Play Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+/* ═══════════════════════════════════════════════
+   RESET & TOKENS
+═══════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+:root{
+  --gold:       #C9A25A;
+  --gold-l:     #E8C47A;
+  --gold-d:     #8A6E35;
+  --gold-glow:  rgba(201,162,90,0.22);
+  --bg:         #1A1710;
+  --s1:         #222018;
+  --s2:         #2A2820;
+  --s3:         #332F25;
+  --border:     #3D3828;
+  --border2:    #504A35;
+  --text:       #F5F0E8;
+  --muted:      #8A8070;
+  --muted2:     #B0A890;
+  --blue:       #60A5FA;
+  --green:      #4ADE80;
+  --red:        #F87171;
+  --amber:      #FBBF24;
+}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'DM Sans',sans-serif;
+  min-height:100vh;overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    repeating-linear-gradient(0deg,transparent,transparent 79px,rgba(201,162,90,0.04) 80px),
+    repeating-linear-gradient(90deg,transparent,transparent 79px,rgba(201,162,90,0.02) 80px);
+}
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 70% 50% at 20% 5%,rgba(201,162,90,0.07) 0%,transparent 55%),
+    radial-gradient(ellipse 50% 40% at 80% 85%,rgba(212,149,106,0.05) 0%,transparent 50%);
+}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+/* ═══════════════════════════════════════════════
+   LOADING SCREEN
+═══════════════════════════════════════════════ */
+#loading-screen{
+  position:fixed;inset:0;z-index:999;
+  background:var(--bg);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:20px;
+}
+.ls-ring{
+  width:56px;height:56px;
+  border:4px solid var(--border);border-top-color:var(--gold);
+  border-radius:50%;animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+.ls-title{
+  font-family:'Playfair Display',serif;font-size:18px;font-weight:700;
+  background:linear-gradient(135deg,var(--gold-l),var(--gold));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.ls-sub{font-size:12px;color:var(--muted);letter-spacing:.5px;}
+
+/* ═══════════════════════════════════════════════
+   ERROR SCREEN
+═══════════════════════════════════════════════ */
+#error-screen{
+  display:none;position:fixed;inset:0;z-index:998;
+  background:var(--bg);align-items:center;justify-content:center;
+}
+.err-card{
+  background:var(--s1);border:1px solid var(--border);
+  border-top:3px solid var(--red);border-radius:16px;
+  padding:40px;max-width:500px;width:90%;text-align:center;
+  position:relative;z-index:1;
+}
+.err-icon{font-size:44px;margin-bottom:12px;}
+.err-title{font-family:'Playfair Display',serif;font-size:20px;color:var(--red);margin-bottom:12px;}
+.err-body{color:var(--muted);font-size:13px;line-height:1.8;margin-bottom:16px;}
+.err-steps{
+  text-align:left;background:rgba(0,0,0,.25);border-radius:10px;
+  padding:14px 18px;margin-bottom:20px;color:var(--muted2);
+  font-size:12px;line-height:2.2;list-style:none;
+}
+.err-steps li::before{content:'→ ';color:var(--gold);}
+.err-detail{
+  background:rgba(0,0,0,.3);border-radius:8px;padding:10px 14px;
+  font-size:11px;color:var(--gold);font-family:'DM Mono',monospace;
+  word-break:break-all;text-align:left;margin-bottom:20px;
+  max-height:80px;overflow:auto;display:none;
+}
+.err-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+.btn-retry{
+  padding:10px 24px;border-radius:8px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,var(--gold),var(--gold-d));
+  color:var(--bg);font-weight:700;font-size:13px;
+}
+.btn-sheet{
+  padding:10px 24px;border-radius:8px;cursor:pointer;
+  background:transparent;border:1px solid var(--border2);
+  color:var(--muted2);font-size:13px;text-decoration:none;
+  display:inline-flex;align-items:center;gap:6px;
+}
+
+/* ═══════════════════════════════════════════════
+   DASHBOARD
+═══════════════════════════════════════════════ */
+#dashboard{display:none;position:relative;z-index:1;}
+
+/* ── Topbar ── */
+.topbar{
+  position:sticky;top:0;z-index:200;
+  background:linear-gradient(180deg,var(--s1) 0%,var(--bg) 100%);
+  border-bottom:2px solid var(--gold);
+  box-shadow:0 2px 20px rgba(201,162,90,0.12);
+}
+.topbar::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,var(--gold-l),transparent);
+}
+.topbar-inner{
+  max-width:1300px;margin:0 auto;
+  display:flex;align-items:center;gap:14px;
+  height:52px;padding:0 20px;
+}
+.topbar-title{
+  font-family:'Playfair Display',serif;font-size:16px;font-weight:700;
+  background:linear-gradient(135deg,var(--gold-l),var(--gold));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.topbar-sub{font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+#ts-badge{
+  font-size:10px;color:var(--muted);letter-spacing:.5px;
+  padding:3px 10px;border-radius:8px;
+  background:rgba(201,162,90,0.07);border:1px solid var(--border);
+}
+.btn-refresh{
+  padding:6px 14px;border-radius:8px;font-size:11px;font-weight:600;
+  background:linear-gradient(135deg,var(--gold),var(--gold-d));
+  color:var(--bg);border:none;cursor:pointer;transition:opacity .15s;
+}
+.btn-refresh:hover{opacity:.85;}
+
+/* ── Page ── */
+.page{max-width:1300px;margin:0 auto;padding:24px 20px 48px;}
+
+/* ── KPI strip ── */
+.kpi-row{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+  gap:12px;margin-bottom:28px;
+}
+.kpi{
+  background:var(--s1);border:1px solid var(--border);
+  border-radius:12px;padding:16px 14px;text-align:center;
+  box-shadow:0 2px 12px rgba(0,0,0,.35);
+  transition:border-color .2s;
+}
+.kpi:hover{border-color:var(--border2);}
+.kpi-val{
+  font-family:'DM Mono',monospace;font-size:26px;font-weight:500;
+  color:var(--gold-l);line-height:1;margin-bottom:6px;
+}
+.kpi-lbl{font-size:10px;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;}
+
+/* ── Section title ── */
+.sec-title{
+  font-family:'Playfair Display',serif;font-size:18px;font-weight:700;
+  background:linear-gradient(135deg,var(--gold-l),var(--gold));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:16px;padding-bottom:10px;
+  border-bottom:1px solid var(--border);
+}
+
+/* ═══════════════════════════════════════════════
+   LEADER CARD
+═══════════════════════════════════════════════ */
+.leader-card{
+  background:linear-gradient(145deg,#2A2418,#332A18);
+  border:1px solid var(--gold);border-radius:18px;
+  box-shadow:0 8px 32px rgba(201,162,90,0.20);
+  padding:26px 28px;margin-bottom:28px;
+  position:relative;overflow:hidden;
+}
+.leader-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,var(--gold-l),transparent);
+}
+.leader-card::after{
+  content:'';position:absolute;bottom:-50px;right:-50px;
+  width:160px;height:160px;border-radius:50%;
+  background:rgba(201,162,90,0.04);pointer-events:none;
+}
+.leader-grid{
+  display:grid;grid-template-columns:1fr auto;
+  gap:28px;align-items:start;
+}
+@media(max-width:620px){.leader-grid{grid-template-columns:1fr;}}
+.leader-badge{
+  font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+  color:var(--gold-d);margin-bottom:8px;
+}
+.leader-name{
+  font-family:'Playfair Display',serif;font-size:22px;font-weight:900;
+  color:var(--text);line-height:1.1;margin-bottom:4px;
+}
+.leader-meta{font-size:11px;color:var(--muted);letter-spacing:.5px;margin-bottom:18px;}
+/* Category bars */
+.cat-bars{display:flex;flex-direction:column;gap:10px;}
+.cat-row{display:flex;align-items:center;gap:10px;}
+.cat-lbl{font-size:11px;color:var(--muted);min-width:190px;flex-shrink:0;}
+.cat-track{flex:1;height:7px;background:var(--border);border-radius:4px;overflow:hidden;}
+.cat-fill{height:100%;border-radius:4px;transition:width .6s ease;}
+.cat-num{font-family:'DM Mono',monospace;font-size:12px;color:var(--gold);
+  width:50px;text-align:right;flex-shrink:0;}
+/* Right score */
+.leader-right{text-align:center;flex-shrink:0;padding-top:4px;}
+.leader-score{
+  font-family:'DM Mono',monospace;font-size:58px;font-weight:500;
+  color:var(--gold-l);line-height:1;
+}
+.leader-score-sub{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:4px;}
+.tier-pill{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:4px 14px;border-radius:14px;margin-top:10px;
+  font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+}
+.leader-rank{font-size:11px;color:var(--muted);margin-top:6px;}
+
+/* ═══════════════════════════════════════════════
+   STANDINGS TABLE
+═══════════════════════════════════════════════ */
+.tbl-card{
+  background:var(--s1);border:1px solid var(--border);
+  border-radius:14px;overflow:hidden;
+  box-shadow:0 4px 20px rgba(0,0,0,.35);
+  margin-bottom:28px;
+}
+.tbl-scroll{overflow-x:auto;}
+.fp-tbl{width:100%;border-collapse:collapse;font-size:13px;min-width:580px;}
+.fp-tbl thead tr{background:#111009;}
+.fp-tbl th{
+  padding:11px 16px;text-align:left;
+  font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;
+  color:var(--muted);border-bottom:2px solid var(--gold);white-space:nowrap;
+}
+.fp-tbl tbody tr{border-bottom:1px solid var(--border);transition:background .12s;}
+.fp-tbl tbody tr:hover{background:rgba(201,162,90,.06);}
+.fp-tbl tbody tr:nth-child(even){background:rgba(255,255,255,.015);}
+.fp-tbl td{padding:11px 16px;color:var(--text);white-space:nowrap;}
+/* Medal rows */
+.fp-tbl tbody tr.m1{border-left:3px solid var(--gold-l);}
+.fp-tbl tbody tr.m2{border-left:3px solid var(--muted2);}
+.fp-tbl tbody tr.m3{border-left:3px solid var(--gold);}
+.fp-tbl tbody tr.m1 td:first-child{color:var(--gold-l);font-weight:700;}
+.fp-tbl tbody tr.m2 td:first-child{color:var(--muted2);font-weight:600;}
+.fp-tbl tbody tr.m3 td:first-child{color:var(--gold);font-weight:600;}
+/* Unrated rows */
+.fp-tbl tbody tr.unrated td{color:var(--muted);}
+/* Score bar */
+.score-wrap{display:flex;align-items:center;gap:8px;min-width:130px;}
+.score-track{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+.score-fill{height:100%;border-radius:3px;}
+.score-num{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;width:34px;text-align:right;}
+.not-rated{color:var(--muted);font-size:11px;font-style:italic;}
+/* Eligible badge */
+.elig-yes{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:2px 10px;border-radius:10px;font-size:10px;font-weight:700;
+  background:rgba(74,222,128,.12);color:#4ADE80;border:1px solid rgba(74,222,128,.3);
+}
+.elig-no{color:var(--muted);font-size:11px;}
+
+/* ═══════════════════════════════════════════════
+   EMPTY / NO DATA
+═══════════════════════════════════════════════ */
+.empty{text-align:center;padding:60px 20px;color:var(--muted);}
+.empty-icon{font-size:48px;margin-bottom:12px;}
+.empty-title{font-family:'Playfair Display',serif;font-size:18px;color:var(--muted2);margin-bottom:8px;}
+.empty-sub{font-size:12px;line-height:1.7;}
+
+@media(max-width:600px){
+  .kpi-row{grid-template-columns:repeat(2,1fr);}
+  .kpi-val{font-size:22px;}
+  .leader-score{font-size:44px;}
+  .cat-lbl{min-width:140px;font-size:10px;}
+  .page{padding:14px 12px 32px;}
+}
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading-screen">
+  <div class="ls-ring"></div>
+  <div class="ls-title">CCL Fair Play Dashboard</div>
+  <div class="ls-sub" id="ls-sub">Loading Season Standings…</div>
+</div>
+
+<!-- Error -->
+<div id="error-screen">
+  <div class="err-card">
+    <div class="err-icon">⚠️</div>
+    <div class="err-title">Could Not Load Data</div>
+    <div class="err-body" id="err-body">Unable to fetch the Season Standings sheet.</div>
+    <ul class="err-steps" id="err-steps">
+      <li>Open the Google Sheet (button below)</li>
+      <li>Click <strong>File → Share → Publish to the web</strong></li>
+      <li>Select tab: <strong>Season Standings</strong> → format: <strong>CSV</strong></li>
+      <li>Click <strong>Publish</strong> and confirm</li>
+    </ul>
+    <div class="err-detail" id="err-detail"></div>
+    <div class="err-actions">
+      <button class="btn-retry" onclick="boot()">🔄 Try Again</button>
+      <a class="btn-sheet" href="https://docs.google.com/spreadsheets/d/1_FHf_EJewdhK0RVd9c_mOKxSLjzz_v3wZ1HoS5EqLVc/edit" target="_blank" rel="noopener">📋 Open Sheet ↗</a>
+    </div>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard">
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div>
+        <div class="topbar-title">🏆 Team Fair Play Dashboard</div>
+        <div class="topbar-sub">Connecticut Cricket League · 2026 Season</div>
+      </div>
+      <div class="topbar-right">
+        <span id="ts-badge">—</span>
+        <button class="btn-refresh" onclick="boot()">🔄 Refresh</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="page">
+    <!-- KPI strip -->
+    <div class="kpi-row" id="kpi-row">
+      <div class="kpi"><div class="kpi-val" id="k-reg">—</div><div class="kpi-lbl">Teams Registered</div></div>
+      <div class="kpi"><div class="kpi-val" id="k-rated">—</div><div class="kpi-lbl">Teams Rated</div></div>
+      <div class="kpi"><div class="kpi-val" id="k-avg">—</div><div class="kpi-lbl">Avg Season Score</div></div>
+      <div class="kpi"><div class="kpi-val" id="k-high">—</div><div class="kpi-lbl">League High Score</div></div>
+      <div class="kpi"><div class="kpi-val" id="k-elig">—</div><div class="kpi-lbl">Fair Play Eligible</div></div>
+      <div class="kpi"><div class="kpi-val" id="k-leader" style="font-size:14px;line-height:1.3">—</div><div class="kpi-lbl">Current Leader</div></div>
+    </div>
+
+    <!-- Leader card -->
+    <div id="leader-wrap"></div>
+
+    <!-- Standings -->
+    <div class="sec-title">📋 Season Standings</div>
+    <div class="tbl-card">
+      <div class="tbl-scroll">
+        <table class="fp-tbl" id="standings-tbl">
+          <thead><tr id="tbl-head"></tr></thead>
+          <tbody id="tbl-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   CCL FAIR PLAY  ·  Season Standings  ·  Google Sheets
+═══════════════════════════════════════════════════════ */
+const SHEET_ID  = '1_FHf_EJewdhK0RVd9c_mOKxSLjzz_v3wZ1HoS5EqLVc';
+const TABS      = ['Season Standings','SeasonStandings','Standings','Sheet1'];
+const REFRESH   = 5 * 60 * 1000;
+let   _csv      = '';
+let   _timer    = null;
+let   _tab      = '';
+
+const TIERS = {
+  'Elite':       {c:'#E8C47A', bg:'rgba(232,196,122,.14)', b:'rgba(232,196,122,.35)', min:90},
+  'League':      {c:'#60A5FA', bg:'rgba(96,165,250,.14)',  b:'rgba(96,165,250,.35)',  min:75},
+  'Development': {c:'#4ADE80', bg:'rgba(74,222,128,.14)',  b:'rgba(74,222,128,.35)',  min:60},
+  'Review':      {c:'#F87171', bg:'rgba(248,113,113,.14)', b:'rgba(248,113,113,.35)', min:0 },
+  '—':           {c:'#8A8070', bg:'rgba(80,74,53,.10)',    b:'rgba(80,74,53,.25)',    min:-1},
+};
+function getTier(s){ return s>=90?'Elite':s>=75?'League':s>=60?'Development':'Review'; }
+function scoreColor(s){
+  if(s===null) return '#8A8070';
+  if(s>=90) return '#E8C47A';
+  if(s>=75) return '#60A5FA';
+  if(s>=60) return '#4ADE80';
+  return '#F87171';
+}
+
+/* ── Fetch with fallback ── */
+async function fetchTab(tab){
+  const cb = Date.now();
+  const urls = [
+    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}&_cb=${cb}`,
+    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&sheet=${encodeURIComponent(tab)}&_cb=${cb}`,
+  ];
+  for(const url of urls){
+    try{
+      const r = await fetch(url,{cache:'no-store'});
+      if(r.ok) return r.text();
+    }catch(e){}
+  }
+  return null;
+}
+
+/* ── CSV parser ── */
+function parseCSV(t){
+  const rows=[];let cur='',q=false,row=[];
+  for(let i=0;i<t.length;i++){
+    const c=t[i];
+    if(c==='"'){q=!q;continue;}
+    if(c===','&&!q){row.push(cur.trim());cur='';continue;}
+    if((c==='\n'||c==='\r')&&!q){
+      if(c==='\r'&&t[i+1]==='\n')i++;
+      if(row.length||cur.trim()){row.push(cur.trim());rows.push(row);}
+      row=[];cur='';continue;
+    }
+    cur+=c;
+  }
+  if(cur.trim()||row.length){row.push(cur.trim());rows.push(row);}
+  return rows;
+}
+
+/* ── Find real header row (sheet has 4 metadata rows, header at row 5 = index 4) ── */
+function headerIdx(rows){
+  // Check index 4 first (row 5 in spreadsheet)
+  if(rows.length>4){
+    const r=rows[4].map(h=>(h||'').toLowerCase().trim());
+    if(r.some(h=>h==='team'||h==='team name'||h==='rank'||h.includes('cumulative'))) return 4;
+  }
+  // Scan rows 0–9
+  for(let i=0;i<Math.min(rows.length,10);i++){
+    const r=rows[i].map(h=>(h||'').toLowerCase().trim());
+    if(r.some(h=>h==='team'||h==='team name')||r.some(h=>h.includes('cumulative'))||r.some(h=>h==='rank')) return i;
+  }
+  return 0;
+}
+
+/* ── Read B4 = row index 3, col index 1 ── */
+function regCount(rows){
+  // B4 first
+  if(rows.length>3&&rows[3]&&rows[3][1]!==undefined&&rows[3][1]!==''){
+    const v=parseInt(rows[3][1],10);
+    if(!isNaN(v)&&v>0) return v;
+  }
+  // Scan for label
+  for(let i=0;i<5;i++){
+    if(!rows[i]) continue;
+    for(let j=0;j<rows[i].length;j++){
+      const c=(rows[i][j]||'').toLowerCase();
+      if(c.includes('teams registered')||c.includes('number of team')){
+        const v=parseInt(rows[i][j+1]||'',10);
+        if(!isNaN(v)&&v>0) return v;
+      }
+    }
+  }
+  return null;
+}
+
+/* ── Column finder ── */
+function cv(row,hdr,...names){
+  for(const n of names){
+    const i=hdr.findIndex(h=>h===n||h.includes(n));
+    if(i>=0&&row[i]!==undefined) return row[i];
+  }
+  return '';
+}
+function n(v){const x=parseFloat(v);return isNaN(x)?null:x;}
+
+/* ── Parse team rows ── */
+function parseTeams(rows){
+  const hi  = headerIdx(rows);
+  const hdr = rows[hi].map(h=>(h||'').toLowerCase().trim());
+  const data = rows.slice(hi+1);
+  const map  = {};
+
+  for(const r of data){
+    if(!r||!r.some(c=>(c||'').trim())) continue;
+    const name = cv(r,hdr,'team','team name');
+    if(!name||!name.trim()) continue;
+    const nl=name.trim().toLowerCase();
+    if(nl==='team'||nl==='team name'||nl==='rank'||nl.includes('cricket league')||nl.includes('standings')) continue;
+    if(name.startsWith('🏆')||name.startsWith('📌')) continue;
+
+    const matchRaw = cv(r,hdr,'matches rated','matches');
+    const matches  = parseInt(matchRaw,10)||0;
+
+    const avgRaw = cv(r,hdr,'cumulative avg','cumulative average','avg score','cumulative');
+    const score  = (!avgRaw||avgRaw.trim()==='')?null:n(avgRaw);
+
+    const catA = n(cv(r,hdr,'on-field','cat a','conduct'));
+    const catB = n(cv(r,hdr,'match prep','cat b','admin'));
+    const catC = n(cv(r,hdr,'professionalism','cat c','presentation'));
+    const catD = n(cv(r,hdr,'captain','cat d','leadership'));
+
+    const tierRaw = cv(r,hdr,'panel tier','tier')||'';
+    const tier    = tierRaw.trim()||(score!==null?getTier(score):'—');
+    const rank    = n(cv(r,hdr,'rank'));
+
+    if(!map[name.trim()])
+      map[name.trim()]={
+        name:name.trim(),
+        matches: score!==null?matches:0,
+        score, catA, catB, catC, catD, tier,
+        rank:rank||null,
+        // Store full raw row for pass-through table rendering
+        raw:r, hdr
+      };
+  }
+
+  const arr = Object.values(map).sort((a,b)=>{
+    if(a.score===null&&b.score===null) return 0;
+    if(a.score===null) return 1;
+    if(b.score===null) return -1;
+    return b.score-a.score;
+  });
+  let ri=1;
+  for(const t of arr){ if(t.score!==null&&!t.rank) t.rank=ri++; }
+  return arr;
+}
+
+/* ── Render ── */
+function render(rows){
+  const rc     = regCount(rows);
+  const teams  = parseTeams(rows);
+  const rated  = teams.filter(t=>t.score!==null);
+  const leader = rated[0]||null;
+  const scores = rated.map(t=>t.score).filter(s=>s!==null);
+  const avg    = scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):null;
+  const elig   = rated.filter(t=>t.score>=75).length;
+
+  // KPIs
+  document.getElementById('k-reg').textContent    = rc!==null?rc:teams.length;
+  document.getElementById('k-rated').textContent  = rated.length;
+  document.getElementById('k-avg').textContent    = avg!==null?avg:'—';
+  document.getElementById('k-high').textContent   = leader?leader.score:'—';
+  document.getElementById('k-elig').textContent   = elig;
+  document.getElementById('k-leader').textContent = leader?leader.name.split(' ').slice(0,2).join(' '):'—';
+
+  // Leader card
+  const lw = document.getElementById('leader-wrap');
+  if(leader){
+    const sc  = scoreColor(leader.score);
+    const tc  = TIERS[leader.tier]||TIERS['—'];
+    const cats = [
+      {l:'Cat A · On-Field Conduct & Discipline',   v:leader.catA, m:40},
+      {l:'Cat B · Match Prep & Admin Compliance',   v:leader.catB, m:25},
+      {l:'Cat C · Professionalism & Presentation',  v:leader.catC, m:20},
+      {l:'Cat D · Captain Leadership',              v:leader.catD, m:15},
+    ].filter(c=>c.v!==null&&!isNaN(c.v));
+
+    const catHTML = cats.length ? cats.map(c=>`
+      <div class="cat-row">
+        <div class="cat-lbl">${c.l}</div>
+        <div class="cat-track"><div class="cat-fill" style="width:${Math.min(100,c.v/c.m*100).toFixed(1)}%;background:${sc}"></div></div>
+        <div class="cat-num">${c.v}/${c.m}</div>
+      </div>`).join('')
+      : '<p style="color:var(--muted);font-size:12px">Category scores not yet available.</p>';
+
+    lw.innerHTML=`
+      <div class="leader-card">
+        <div class="leader-grid">
+          <div>
+            <div class="leader-badge">🏆 Current Fair Play Leader</div>
+            <div class="leader-name">${leader.name}</div>
+            <div class="leader-meta">${leader.matches} match${leader.matches!==1?'es':''} rated · 2026 Season</div>
+            <div class="cat-bars">${catHTML}</div>
+          </div>
+          <div class="leader-right">
+            <div class="leader-score">${leader.score}</div>
+            <div class="leader-score-sub">/ 100 points</div>
+            <div class="tier-pill" style="background:${tc.bg};color:${tc.c};border:1px solid ${tc.b}">${leader.tier}</div>
+            ${leader.rank?`<div class="leader-rank">Rank #${leader.rank}</div>`:''}
+          </div>
+        </div>
+      </div>`;
+  } else {
+    lw.innerHTML='';
+  }
+
+  // Standings table
+  // Use actual sheet headers (pass-through)
+  const hi  = headerIdx(rows);
+  const hdr = rows[hi];
+  document.getElementById('tbl-head').innerHTML =
+    hdr.filter(h=>h.trim()).map(h=>`<th>${h}</th>`).join('');
+
+  if(teams.length===0){
+    document.getElementById('tbl-body').innerHTML=`
+      <tr><td colspan="${hdr.filter(h=>h.trim()).length}" style="text-align:center;padding:48px;color:var(--muted)">
+        No team data found. Make sure the Season Standings tab has a "Team" column with team names from row 6 onwards.
+      </td></tr>`;
+  } else {
+    document.getElementById('tbl-body').innerHTML = teams.map((t,i)=>{
+      const isRated = t.score!==null;
+      const mc = i===0?'m1':i===1?'m2':i===2?'m3':'';
+      const rc2 = isRated?mc:'unrated';
+
+      // Render the raw row, applying special formatting to score and tier columns
+      const hdrl = hdr.map(h=>(h||'').toLowerCase().trim());
+      const tds  = hdr.map((h,ci)=>{
+        if(!h.trim()) return '';
+        const val  = (t.raw&&t.raw[ci]!==undefined)?t.raw[ci]:'';
+        const hl   = h.toLowerCase().trim();
+
+        if(hl.includes('cumulative avg')||hl.includes('avg score')||hl==='score'||hl.includes('cumulative')){
+          if(!val||val.trim()==='') return `<td><span class="not-rated">Not yet rated</span></td>`;
+          const s=parseFloat(val);
+          const c=scoreColor(isNaN(s)?null:s);
+          const pct=isNaN(s)?0:Math.min(100,s);
+          return `<td><div class="score-wrap">
+            <div class="score-track"><div class="score-fill" style="width:${pct}%;background:${c}"></div></div>
+            <span class="score-num" style="color:${c}">${val}</span>
+          </div></td>`;
+        }
+        if(hl==='tier'||hl.includes('panel tier')){
+          const tier=val.trim()||'—';
+          const tc2=TIERS[tier]||TIERS['—'];
+          return `<td><span class="tier-pill" style="background:${tc2.bg};color:${tc2.c};border:1px solid ${tc2.b}">${tier}</span></td>`;
+        }
+        if(hl.includes('eligible')||hl.includes('fair play elig')){
+          const yes=/yes|✓|true|eligible/i.test(val);
+          return `<td>${yes?'<span class="elig-yes">✓ Eligible</span>':'<span class="elig-no">—</span>'}</td>`;
+        }
+        return `<td>${val||'—'}</td>`;
+      }).join('');
+
+      return `<tr class="${rc2}">${tds}</tr>`;
+    }).join('');
+  }
+
+  // Timestamp
+  const now=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('ts-badge').textContent=`⟳ ${now} · Auto-sync 5 min`;
+}
+
+/* ── Boot / refresh ── */
+async function boot(){
+  document.getElementById('loading-screen').style.display='flex';
+  document.getElementById('error-screen').style.display='none';
+  document.getElementById('dashboard').style.display='none';
+
+  let csv=null, lastErr='';
+
+  for(const tab of TABS){
+    document.getElementById('ls-sub').textContent=`Trying "${tab}" tab…`;
+    const text = await fetchTab(tab);
+    if(text){
+      const rows=parseCSV(text);
+      if(rows&&rows.length>5){ csv=text; _tab=tab; break; }
+      lastErr=`Tab "${tab}" loaded but has insufficient data (${rows?rows.length:0} rows)`;
+    } else {
+      lastErr=`Could not fetch tab "${tab}"`;
+    }
+  }
+
+  if(!csv){
+    document.getElementById('loading-screen').style.display='none';
+    document.getElementById('error-screen').style.display='flex';
+    const det=document.getElementById('err-detail');
+    det.textContent=lastErr;
+    det.style.display='block';
+    return;
+  }
+
+  _csv=csv;
+  const rows=parseCSV(csv);
+
+  document.getElementById('loading-screen').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+
+  render(rows);
+
+  clearInterval(_timer);
+  _timer=setInterval(async()=>{
+    try{
+      const text=await fetchTab(_tab);
+      if(!text) return;
+      if(text.trim()===_csv.trim()){
+        const now=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+        document.getElementById('ts-badge').textContent=`⟳ Checked ${now} · No changes`;
+        return;
+      }
+      _csv=text;
+      render(parseCSV(text));
+    }catch(e){}
+  }, REFRESH);
+}
+
+window.addEventListener('DOMContentLoaded', boot);
+</script>
+</body>
+</html>

@@ -51,7 +51,7 @@ body::before {
 /* ─── CONNECT SCREEN ────────────────────────────────────── */
 #connect-screen {
   position: fixed; inset: 0; z-index: 100;
-  display: flex; align-items: center; justify-content: center;
+  align-items: center; justify-content: center;
   background: radial-gradient(ellipse at 50% 40%, #2A2820 0%, #1A1710 65%);
   padding: 24px;
 }
@@ -174,9 +174,8 @@ input[type="text"]::placeholder { color: var(--muted); }
 
 /* ─── LOADING OVERLAY ───────────────────────────────────── */
 #loading-overlay {
-  display: none;
   position: fixed; inset: 0; z-index: 200;
-  background: rgba(7,17,10,0.92); backdrop-filter: blur(8px);
+  background: rgba(26,23,16,0.95); backdrop-filter: blur(8px);
   align-items: center; justify-content: center; flex-direction: column; gap: 20px;
 }
 .loader-ring {
@@ -553,7 +552,7 @@ input:focus,select:focus{border-color:#C9A25A!important;box-shadow:0 0 0 3px rgb
 <body>
 
 <!-- ═══════════════════════════════ CONNECT SCREEN ═══ -->
-<div id="connect-screen">
+<div id="connect-screen" style="display:none">
   <div class="connect-card">
     <div class="connect-title">Conduct &amp; Fair Play<br>Dashboard</div>
     <p class="connect-subtitle">Connect your public Google Sheet to load live season ratings, standings, and Fair Play eligibility — updated every time the form receives a new umpire submission.</p>
@@ -594,7 +593,7 @@ input:focus,select:focus{border-color:#C9A25A!important;box-shadow:0 0 0 3px rgb
 </div>
 
 <!-- ═══════════════════════════════ LOADING ═══════════ -->
-<div id="loading-overlay">
+<div id="loading-overlay" style="display:flex">
   <div class="loader-ring"></div>
   <div class="loader-text">Fetching sheet data…</div>
   <div class="loader-sub" id="loading-sub">Connecting to Google Sheets</div>
@@ -834,35 +833,18 @@ function toggleAutoRefresh() {
 async function silentRefresh() {
   setSyncing(true);
   try {
-    const csv = await fetchCSV(currentSheetId, currentSheetName);
-
-    // Change detection — compare raw CSV text
+    const csv = await fetchCSV(currentSheetId, 'Season Standings');
     const changed = (csv.trim() !== lastCSVSnapshot.trim());
 
     if (changed) {
       lastCSVSnapshot = csv;
-
-      // Always read Season Standings for team list and B4 count
-      let teams = [];
-      let registeredCount = null;
-      try {
-        const csvS = await fetchCSV(currentSheetId, 'Season Standings');
-        const rowsS = parseCSV(csvS);
-        registeredCount = readRegisteredCount(rowsS);
-        teams = processRows(rowsS, 'Season Standings');
-      } catch(e) { /* ignore */ }
-      if (teams.length < 1) {
-        const rows = parseCSV(csv);
-        teams = processRows(rows, currentSheetName);
-      }
+      const rowsS = parseCSV(csv);
+      const registeredCount = readRegisteredCount(rowsS);
+      let teams = processRows(rowsS, 'Season Standings');
       teams = mergeWithKnown(teams);
-
-      // Find which teams actually changed
       const changedTeams = findChangedTeams(allTeams, teams);
-
       renderDashboard(teams, changedTeams, registeredCount);
       flashChanged();
-
       const msg = changedTeams.length
         ? `${changedTeams.length} team(s) updated: ${changedTeams.slice(0,2).join(', ')}${changedTeams.length > 2 ? ' …' : ''}`
         : 'New data detected in the sheet.';
@@ -886,28 +868,13 @@ async function manualRefresh() {
   btn.disabled = true; btn.textContent = '⏳ Refreshing…';
   setSyncing(true);
   try {
-    const csv  = await fetchCSV(currentSheetId, currentSheetName);
+    const csv     = await fetchCSV(currentSheetId, 'Season Standings');
     const changed = (csv.trim() !== lastCSVSnapshot.trim());
     lastCSVSnapshot = csv;
-
-    // Always read Season Standings for team list and B4 count
-    let teams = [];
-    let registeredCount = null;
-    try {
-      const csvS = await fetchCSV(currentSheetId, 'Season Standings');
-      const rowsS = parseCSV(csvS);
-      if (rowsS.length > 3 && rowsS[3][1] !== undefined) {
-        const b4 = parseInt(rowsS[3][1], 10);
-        if (!isNaN(b4) && b4 > 0) registeredCount = b4;
-      }
-      teams = processRows(rowsS, 'Season Standings');
-    } catch(e) { /* ignore */ }
-    if (teams.length < 1) {
-      const rows = parseCSV(csv);
-      teams = processRows(rows, currentSheetName);
-    }
+    const rowsS   = parseCSV(csv);
+    const registeredCount = readRegisteredCount(rowsS);
+    let teams = processRows(rowsS, 'Season Standings');
     teams = mergeWithKnown(teams);
-
     const changedTeams = findChangedTeams(allTeams, teams);
     renderDashboard(teams, changedTeams, registeredCount);
     if (changed) {
@@ -1458,39 +1425,29 @@ window.addEventListener('DOMContentLoaded', () => {
 
 /* ── AUTO LOAD — connects directly with hardcoded ID, skips connect screen ── */
 async function autoLoadSheet() {
-  const sheetId   = SHEET_ID_DEFAULT;
-  const sheetName = SHEET_NAME_DEFAULT;
+  const sheetId = SHEET_ID_DEFAULT;
 
   currentSheetId   = sheetId;
-  currentSheetName = sheetName;
+  currentSheetName = 'Season Standings';
 
-  // Hide connect screen immediately, show loading overlay
-  document.getElementById('connect-screen').style.display    = 'none';
-  document.getElementById('loading-overlay').style.display   = 'flex';
-  document.getElementById('loading-sub').textContent         = 'Loading Season Standings…';
-  document.getElementById('dashboard').style.display         = 'none';
+  document.getElementById('connect-screen').style.display  = 'none';
+  document.getElementById('loading-overlay').style.display = 'flex';
+  document.getElementById('loading-sub').textContent       = 'Loading Season Standings…';
+  document.getElementById('dashboard').style.display       = 'none';
 
   try {
-    const csv = await fetchCSV(sheetId, sheetName);
-    const rows = parseCSV(csv);
-    if (rows.length < 2) throw new Error('Sheet returned no data.');
+    // Fetch Season Standings directly — this is the only tab we need
+    const csvS  = await fetchCSV(sheetId, 'Season Standings');
+    const rowsS = parseCSV(csvS);
+
+    if (!rowsS || rowsS.length < 2) throw new Error('Season Standings tab has no data.');
 
     document.getElementById('loading-sub').textContent = 'Processing standings…';
-    await new Promise(r => setTimeout(r, 200));
 
-    // Always read Season Standings for team list and registered count
-    let teams = [];
-    let registeredCount = null;
-    try {
-      const csvS  = await fetchCSV(sheetId, 'Season Standings');
-      const rowsS = parseCSV(csvS);
-      registeredCount = readRegisteredCount(rowsS);
-      teams = processRows(rowsS, 'Season Standings');
-    } catch(e) { /* fallback to main tab */ }
-
-    if (teams.length < 1) teams = processRows(rows, sheetName);
+    const registeredCount = readRegisteredCount(rowsS);
+    let teams = processRows(rowsS, 'Season Standings');
     teams = mergeWithKnown(teams);
-    lastCSVSnapshot = csv;
+    lastCSVSnapshot = csvS;
 
     document.getElementById('sheet-link').href = `https://docs.google.com/spreadsheets/d/${sheetId}/edit`;
     document.getElementById('loading-overlay').style.display = 'none';
@@ -1504,11 +1461,10 @@ async function autoLoadSheet() {
     if (autoRefreshOn) startAutoRefresh();
 
   } catch(err) {
-    // If auto-load fails, fall back to showing the connect screen with an error
     document.getElementById('loading-overlay').style.display = 'none';
     document.getElementById('connect-screen').style.display  = 'flex';
     document.getElementById('sheet-url-input').value         = sheetId;
-    showError(`Auto-load failed: ${err.message} — please connect manually.`);
+    showError(`Could not load Season Standings: ${err.message}`);
   }
 }
 

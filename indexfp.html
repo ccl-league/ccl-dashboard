@@ -992,8 +992,17 @@ function processStandingsSheet(rows, header) {
     const r = rows[i];
     const name = col(r, header, 'team');
     if (!name || name === '—' || name.startsWith('🏆') || name.startsWith('📌')) continue;
-    const score   = num(col(r, header, 'cumulative avg', 'avg score', 'final'));
-    const matches = num(col(r, header, 'matches rated', 'matches')) || 0;
+
+    // Matches MUST come from "Matches Rated" column in standings sheet
+    const matchesRaw = col(r, header, 'matches rated', 'matches rated', 'matches');
+    const matches = num(matchesRaw) || 0;
+
+    // Score from "Cumulative Avg" — if empty/blank this team is NOT yet rated
+    const scoreRaw = col(r, header, 'cumulative avg', 'avg score', 'final');
+    const score    = (scoreRaw === '' || scoreRaw === null || scoreRaw === undefined)
+                     ? null
+                     : num(scoreRaw);
+
     const catA    = num(col(r, header, 'on-field', 'cat a', 'conduct'));
     const catB    = num(col(r, header, 'match prep', 'cat b', 'admin'));
     const catC    = num(col(r, header, 'professionalism', 'cat c', 'presentation'));
@@ -1001,11 +1010,24 @@ function processStandingsSheet(rows, header) {
     const tierRaw = col(r, header, 'panel tier', 'tier') || '';
     const tier    = parseTier(tierRaw) || (score !== null ? getTier(score) : '—');
     const rank    = num(col(r, header, 'rank'));
+
     if (!teams[name])
-      teams[name] = { name, matches, score, catA, catB, catC, catD, tier, rank: rank || null, adjustments: 0 };
+      teams[name] = {
+        name,
+        matches: score !== null ? matches : 0,  // no avg = no rated matches
+        score,
+        catA, catB, catC, catD, tier,
+        rank: rank || null,
+        adjustments: 0
+      };
   }
   return Object.values(teams)
-    .sort((a,b) => { if (a.score===null&&b.score===null) return 0; if (a.score===null) return 1; if (b.score===null) return -1; return b.score-a.score; })
+    .sort((a,b) => {
+      if (a.score===null && b.score===null) return 0;
+      if (a.score===null) return 1;
+      if (b.score===null) return -1;
+      return b.score - a.score;
+    })
     .map((t,i) => ({ ...t, rank: t.rank || (t.score!==null ? i+1 : null) }));
 }
 
@@ -1088,22 +1110,14 @@ function parseTier(raw) {
   return null;
 }
 
-/* ── KNOWN TEAMS ── */
-const KNOWN_TEAMS = [
-  'Caribbean Cricket Club','Concord Cricket Club','West Indian Social Club',
-  'Cricmax Euphoria Stallions','New Britain Social Club','Riverside Cricket Club',
-  'Springfield United Sports Club','Bengal Cricket Club','West Hartford Kings',
-  'The United Cricket Club','Cricmax Euphoria Hawks','Vikings','PCF Lions',
-  'JPL Cricket Club','New Milford Cricket Club','CT Falcons'
-];
+/* ── KNOWN TEAMS — removed: team list now comes entirely from the sheet ── */
 
 function mergeWithKnown(rated) {
-  const ratedNames = rated.map(t => t.name);
-  const unrated = KNOWN_TEAMS
-    .filter(n => !ratedNames.includes(n))
-    .map(n => ({ name:n, matches:0, score:null, catA:null, catB:null, catC:null, catD:null, adjustments:0, tier:'—', rank:null, umpire:'—' }));
-  return [...rated, ...unrated];
+  /* Teams are sourced only from the Team column in the standings sheet.
+     No hardcoded list — return rated as-is. */
+  return rated;
 }
+
 
 /* ── RENDER ── */
 function renderDashboard(teams, changedTeams = []) {
